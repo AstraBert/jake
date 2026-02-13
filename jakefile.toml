@@ -1,0 +1,6 @@
+build = { command = "cargo build", depends_on = [] }
+run-help = { command = "./target/debug/jake --help", depends_on = ["build"] }
+say-hello = { command = "echo 'hello'" }
+say-hello-back = { command = "echo 'hello back'" }
+say-bye = { command = "echo 'bye'", depends_on = ["say-hello", "say-hello-back"] }
+list = { command = "ls" }

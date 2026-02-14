@@ -5,6 +5,7 @@ on:
     paths:
       - src/*.rs
       - Cargo.toml
+      - jakefile.toml
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,8 +18,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Set up Jake (also sets up Rust)
+        uses: AstraBert/setup-jake@v0.1.0
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -39,4 +40,4 @@ jobs:
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build
-        run: make build
+        run: jake build

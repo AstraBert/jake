@@ -5,6 +5,7 @@ on:
     paths:
       - src/*.rs
       - Cargo.toml
+      - jakefile.toml
 env:
   CARGO_TERM_COLOR: always
 
@@ -16,10 +17,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
+      - name: Set up Jake (also sets up Rust)
+        uses: AstraBert/setup-jake@v0.1.0
+
+      - name: Install Clippy
+        run: rustup component add clippy
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -30,11 +32,8 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install protoc
-        uses: taiki-e/install-action@protoc
-
       - name: Run clippy
-        run: make clippy
+        run: jake clippy
 
   format:
     name: Format
@@ -43,10 +42,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
+      - name: Set up Jake (also sets up Rust)
+        uses: AstraBert/setup-jake@v0.1.0
+
+      - name: Install Clippy
+        run: rustup component add rustfmt
 
       - name: Check formatting
-        run: make format-check
+        run: jake format-check

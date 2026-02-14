@@ -32,8 +32,8 @@ Thank you for your interest in contributing to this project! Please review these
 2. **Make your changes and test**
 
    ```bash
-   make build
-   make test
+   jake build
+   jake test
    ```
 
    Ensure the build succeeds and all tests pass. Add tests for new features.
@@ -42,8 +42,8 @@ Thank you for your interest in contributing to this project! Please review these
    Ensure your changes pass all linting checks.
 
   ```bash
-  make clippy-fix
-  make format
+  jake clippy-fix
+  jake format
   ```
 
 5. **Commit your changes**

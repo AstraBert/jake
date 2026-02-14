@@ -90,6 +90,10 @@ drwxr-xr-x@   4 clee  staff   128 Feb 13 10:22 src
 drwxr-xr-x@   6 clee  staff   192 Feb 13 10:22 target
 ```
 
+## In GitHub CI/CD
+
+You can use the [setup-jake](https://github.com/AstraBert/setup-jake) action to set up jake and use it in your GitHub Actions workflows.
+
 ## License
 
 This project is provided under MIT license.

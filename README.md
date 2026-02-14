@@ -4,6 +4,20 @@
 
 It is based on TOML tasks definition (stored in a file called `jakefile.toml`) and can execute commands resolving their dependencies and passing additional options.
 
+## Installation
+
+With cargo (recommended):
+
+```bash
+cargo install jake
+```
+
+With npm:
+
+```bash
+npm install -g @cle-does-things/jake@latest
+```
+
 ## Example `jakefile.toml`
 
 Here is an example for task definition:
@@ -75,3 +89,7 @@ drwxr-xr-x@   9 clee  staff   288 Feb 13 10:20 .git
 drwxr-xr-x@   4 clee  staff   128 Feb 13 10:22 src
 drwxr-xr-x@   6 clee  staff   192 Feb 13 10:22 target
 ```
+
+## License
+
+This project is provided under MIT license.

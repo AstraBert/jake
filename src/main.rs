@@ -1,7 +1,8 @@
-use crate::load::execute_command;
+use crate::{load::execute_command, models::CommandExecutor};
 use clap::Parser;
 
 mod load;
+mod models;
 
 /// Make-like task executor for Unix-based operating systems
 #[derive(Parser, Debug)]
@@ -19,6 +20,7 @@ struct Args {
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    execute_command(&args.task, &args.options)?;
+    let executor = CommandExecutor::new();
+    execute_command(None, &args.task, &args.options, &executor)?;
     Ok(())
 }

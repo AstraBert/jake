@@ -2,6 +2,11 @@
 name = "jake"
 version = "0.1.0"
 edition = "2024"
+license-file = "LICENSE"
+readme = "README.md"
+repository = "https://github.com/AstraBert/jake"
+description = "Make-like task executor for Unix OS."
+keywords = ["make", "task-execution", "automation", "cli"]
 
 [dependencies]
 anyhow = "1.0.101"

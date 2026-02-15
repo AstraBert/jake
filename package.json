@@ -1,6 +1,6 @@
 {
   "name": "@cle-does-things/jake",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Rust-native implementation of the RAG stack",
   "main": "start.js",
   "directories": {

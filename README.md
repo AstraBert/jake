@@ -23,6 +23,7 @@ npm install -g @cle-does-things/jake@latest
 Here is an example for task definition:
 
 ```toml
+default = { command = "cat README.md" }
 say-hello = { command = "echo 'hello'" }
 say-hello-back = { command = "echo 'hello back'" }
 say-bye = { command = "echo 'bye'", depends_on = ["say-hello", "say-hello-back"] }
@@ -40,7 +41,25 @@ Task name    Command to execute    Array of tasks to be executed _before_
 
 While `depends_on` is optional (if not provided, the task does not depend on anything), `command` is a required key.
 
+You can use the `default` task name to indicate the task that should be executed by default when none is provided to `jake` (otherwise, the default task will be the first one in the file).
+
 ## Example Usage
+
+Execute default task:
+
+```bash
+jake
+```
+
+Output:
+
+```text
+# jake
+
+`jake` (crasis for "just make") is a [Make](https://en.wikipedia.org/wiki/Make_(software))-like task executor for Unix-based operating systems.
+
+...
+```
 
 Execute a task that does not depend on anything:
 

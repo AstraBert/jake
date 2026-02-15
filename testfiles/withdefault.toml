@@ -1,0 +1,2 @@
+false = { command = "false" }
+default = { command = "true" }

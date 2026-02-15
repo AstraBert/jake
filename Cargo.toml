@@ -1,6 +1,6 @@
 [package]
 name = "jake"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license-file = "LICENSE"
 readme = "README.md"
@@ -11,4 +11,4 @@ keywords = ["make", "task-execution", "automation", "cli"]
 [dependencies]
 anyhow = "1.0.101"
 clap = { version = "4.5.58", features = ["derive"] }
-toml = "1.0.1"
+toml = { version = "1.0.1", features = ["preserve_order"] }

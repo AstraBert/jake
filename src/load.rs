@@ -18,9 +18,9 @@ pub fn parse_jakefile(file_path: Option<&str>) -> Result<Table> {
     if path.exists() {
         let content = std::fs::read_to_string(path)?;
         let table = content.parse::<Table>()?;
-        return Ok(table);
+        Ok(table)
     } else {
-        return Err(anyhow!("jakefile.toml does not exist"));
+        Err(anyhow!("jakefile.toml does not exist"))
     }
 }
 
@@ -55,18 +55,15 @@ pub fn execute_command(
             "`command` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again"
         ));
     }
-    if task_table.contains_key("depends_on") {
-        match task_table["depends_on"].as_array() {
-            Some(depends) => {
-                for value in depends {
-                    match value.as_str() {
-                        Some(c) => execute_command(jakefile_path, c, "", executor)?,
-                        None => continue,
-                    }
-                }
+    if task_table.contains_key("depends_on")
+        && let Some(depends) = task_table["depends_on"].as_array()
+    {
+        for value in depends {
+            match value.as_str() {
+                Some(c) => execute_command(jakefile_path, c, "", executor)?,
+                None => continue,
             }
-            None => {}
-        };
+        }
     }
     let cmd = match task_table["command"].as_str() {
         Some(c) => c,

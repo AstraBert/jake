@@ -24,10 +24,10 @@ Here is an example for task definition:
 
 ```toml
 default = { command = "cat README.md" }
-say-hello = { command = "echo 'hello'" }
+say-hello = "echo 'hello'"
 say-hello-back = { command = "echo 'hello back'" }
 say-bye = { command = "echo 'bye'", depends_on = ["say-hello", "say-hello-back"] }
-list = { command = "ls" }
+list = "ls"
 ```
 
 And here is the anatomy of a definition:
@@ -39,7 +39,9 @@ Task name    Command to execute    Array of tasks to be executed _before_
                                                the task itself
 ```
 
-While `depends_on` is optional (if not provided, the task does not depend on anything), `command` is a required key.
+While `depends_on` is optional (if not provided, the task does not depend on anything), `command` is a required key if the provided TOML value is an object (as for `say-hello-back`, `default` and `say-bye`).
+
+In cases where the command does not depend on anything, you can also provide it as a plain string (as for `say-hello` and `list`).
 
 You can use the `default` task name to indicate the task that should be executed by default when none is provided to `jake` (otherwise, the default task will be the first one in the file).
 

@@ -97,6 +97,17 @@ def new_version_to_pre_install_js(old_version: str, new_version: str) -> None:
         f.write(content)
 
 
+def new_command_version_main_rs(old_version: str, new_version: str) -> None:
+    with open("src/main.rs", "r") as f:
+        content = f.read()
+    content = content.replace(
+        f'#[command(version = "{old_version}")]',
+        f'#[command(version = "{new_version}")]',
+    )
+    with open("src/main.rs", "w") as f:
+        f.write(content)
+
+
 def main() -> None:
     v_rust, toml_content = load_version_from_toml()
     v_js, json_data = load_version_from_json()
@@ -119,6 +130,7 @@ def main() -> None:
             new_version_to_json(json_data, new_ver)
             new_version_to_toml(toml_content, new_ver)
             new_version_to_pre_install_js(v_rust, new_ver)
+            new_command_version_main_rs(v_rust, new_ver)
             break
     sys.exit(0)
 

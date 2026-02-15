@@ -18,9 +18,9 @@ pub fn parse_jakefile(file_path: Option<&str>) -> Result<Table> {
     if path.exists() {
         let content = std::fs::read_to_string(path)?;
         let table = content.parse::<Table>()?;
-        return Ok(table);
+        Ok(table)
     } else {
-        return Err(anyhow!("jakefile.toml does not exist"));
+        Err(anyhow!("jakefile.toml does not exist"))
     }
 }
 
@@ -55,18 +55,15 @@ pub fn execute_command(
             "`command` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again"
         ));
     }
-    if task_table.contains_key("depends_on") {
-        match task_table["depends_on"].as_array() {
-            Some(depends) => {
-                for value in depends {
-                    match value.as_str() {
-                        Some(c) => execute_command(jakefile_path, c, "", executor)?,
-                        None => continue,
-                    }
-                }
+    if task_table.contains_key("depends_on")
+        && let Some(depends) = task_table["depends_on"].as_array()
+    {
+        for value in depends {
+            match value.as_str() {
+                Some(c) => execute_command(jakefile_path, c, "", executor)?,
+                None => continue,
             }
-            None => {}
-        };
+        }
     }
     let cmd = match task_table["command"].as_str() {
         Some(c) => c,
@@ -84,6 +81,26 @@ pub fn execute_command(
     } else {
         let cmd_slice = [&cmd_parts[1..], &cmd_options[..]].concat();
         executor.execute(main_command, cmd_slice)?;
+    }
+    Ok(())
+}
+
+pub fn execute_default_command(
+    jakefile_path: Option<&str>,
+    flags: &str,
+    executor: &dyn Executor,
+) -> Result<()> {
+    let available_tasks = parse_jakefile(jakefile_path)?;
+    if available_tasks.contains_key("default") {
+        execute_command(jakefile_path, "default", flags, executor)?;
+    } else {
+        let first_key = available_tasks.keys().next();
+        match first_key {
+            None => return Err(anyhow!("could not find any task within jakefile")),
+            Some(task) => {
+                execute_command(jakefile_path, task, flags, executor)?;
+            }
+        }
     }
     Ok(())
 }
@@ -165,6 +182,17 @@ mod tests {
         let mock_content_1 =
             std::fs::read_to_string("test.mock").expect("Should be able to read test.mock");
         assert_eq!(mock_content_1.trim(), "ls");
+        let result_2 = execute_default_command(Some("testfiles/jakefile.toml"), "", &mock_executor);
+        assert!(result_2.is_ok());
+        let mock_content_2 =
+            std::fs::read_to_string("test.mock").expect("Should be able to read test.mock");
+        assert_eq!(mock_content_2.trim(), "echo 'hello'");
+        let result_3 =
+            execute_default_command(Some("testfiles/withdefault.toml"), "", &mock_executor);
+        assert!(result_3.is_ok());
+        let mock_content_3 =
+            std::fs::read_to_string("test.mock").expect("Should be able to read test.mock");
+        assert_eq!(mock_content_3.trim(), "true");
     }
 
     #[test]
@@ -178,6 +206,20 @@ mod tests {
     fn test_command_execution_with_deps() {
         let executor = CommandExecutor::new();
         let result = execute_command(Some("testfiles/jakefile.toml"), "say-bye", "", &executor);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_default_command_with_default() {
+        let executor = CommandExecutor::new();
+        let result = execute_default_command(Some("testfiles/withdefault.toml"), "", &executor);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_default_command_first_key() {
+        let executor = CommandExecutor::new();
+        let result = execute_default_command(Some("testfiles/jakefile.toml"), "", &executor);
         assert!(result.is_ok());
     }
 }

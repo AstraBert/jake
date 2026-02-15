@@ -1,2 +1,4 @@
 false = { command = "false" }
 default = { command = "true" }
+error = ["something", "something-else"]
+nocommand = { depends_on = ["hello"] }

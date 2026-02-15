@@ -44,30 +44,32 @@ pub fn execute_command(
             "Task not available. Please define it within jakefile.toml"
         ));
     }
-    let task_table = match available_tasks[task].as_table() {
-        Some(t) => t,
-        None => {
-            return Err(anyhow!("No associated value to request task"));
+    let cmd;
+    if let Some(task_table) = available_tasks[task].as_table() {
+        if !task_table.contains_key("command") {
+            return Err(anyhow!(
+                "`command` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again"
+            ));
         }
-    };
-    if !task_table.contains_key("command") {
-        return Err(anyhow!(
-            "`command` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again"
-        ));
-    }
-    if task_table.contains_key("depends_on")
-        && let Some(depends) = task_table["depends_on"].as_array()
-    {
-        for value in depends {
-            match value.as_str() {
-                Some(c) => execute_command(jakefile_path, c, "", executor)?,
-                None => continue,
+        if task_table.contains_key("depends_on")
+            && let Some(depends) = task_table["depends_on"].as_array()
+        {
+            for value in depends {
+                match value.as_str() {
+                    Some(c) => execute_command(jakefile_path, c, "", executor)?,
+                    None => continue,
+                }
             }
         }
-    }
-    let cmd = match task_table["command"].as_str() {
-        Some(c) => c,
-        None => return Err(anyhow!("Unsupported empty or null command for task")),
+        match task_table["command"].as_str() {
+            Some(c) => cmd = c,
+            None => return Err(anyhow!("Unsupported value for the task's command")),
+        }
+    } else {
+        match available_tasks[task].as_str() {
+            Some(t) => cmd = t,
+            None => return Err(anyhow!("Unsupported value for the task's command")),
+        }
     };
     let cmd_parts: Vec<&str> = cmd.split_whitespace().collect();
     let main_command = cmd_parts[0];
@@ -140,6 +142,7 @@ mod tests {
                 assert!(t.contains_key("say-hello-back"));
                 assert!(t.contains_key("say-bye"));
                 assert!(t.contains_key("list"));
+                assert!(t.contains_key("strcmd"));
                 match t["say-hello"].as_table() {
                     None => {
                         println!("say-hello is not a table");
@@ -158,6 +161,15 @@ mod tests {
                     Some(d) => {
                         assert!(d.contains_key("command"));
                         assert!(d.contains_key("depends_on"));
+                    }
+                }
+                match t["strcmd"].as_str() {
+                    None => {
+                        println!("strcmd is not a string");
+                        assert!(false); // fail here
+                    }
+                    Some(s) => {
+                        assert_eq!(s, "echo ciao");
                     }
                 }
             }
@@ -193,6 +205,16 @@ mod tests {
         let mock_content_3 =
             std::fs::read_to_string("test.mock").expect("Should be able to read test.mock");
         assert_eq!(mock_content_3.trim(), "true");
+        let result_4 = execute_command(
+            Some("testfiles/jakefile.toml"),
+            "strcmd",
+            "",
+            &mock_executor,
+        );
+        assert!(result_4.is_ok());
+        let mock_content_4 =
+            std::fs::read_to_string("test.mock").expect("Should be able to read test.mock");
+        assert_eq!(mock_content_4.trim(), "echo ciao");
     }
 
     #[test]
@@ -203,9 +225,61 @@ mod tests {
     }
 
     #[test]
+    fn test_command_execution_task_not_found() {
+        let executor = CommandExecutor::new();
+        let result = execute_command(Some("testfiles/jakefile.toml"), "say-ciao", "", &executor);
+        assert!(result.is_err_and(|e| e.to_string()
+            == "Task not available. Please define it within jakefile.toml".to_string()));
+    }
+
+    #[test]
+    fn test_command_execution_unexpected_format() {
+        let executor = CommandExecutor::new();
+        let result = execute_command(Some("testfiles/withdefault.toml"), "error", "", &executor);
+        assert!(result.is_err_and(
+            |e| e.to_string() == "Unsupported value for the task's command".to_string()
+        ));
+    }
+
+    #[test]
+    fn test_command_execution_no_command() {
+        let executor = CommandExecutor::new();
+        let result = execute_command(
+            Some("testfiles/withdefault.toml"),
+            "nocommand",
+            "",
+            &executor,
+        );
+        assert!(result.is_err_and(
+            |e| e.to_string() == "`command` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again".to_string()
+        ));
+    }
+
+    #[test]
+    fn test_command_execution_wrong_command() {
+        let executor = CommandExecutor::new();
+        let result = execute_command(
+            Some("testfiles/jakefile.toml"),
+            "wrongcommand",
+            "",
+            &executor,
+        );
+        assert!(result.is_err_and(
+            |e| e.to_string() == "Unsupported value for the task's command".to_string()
+        ));
+    }
+
+    #[test]
     fn test_command_execution_with_deps() {
         let executor = CommandExecutor::new();
         let result = execute_command(Some("testfiles/jakefile.toml"), "say-bye", "", &executor);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_command_execution_from_str() {
+        let executor = CommandExecutor::new();
+        let result = execute_command(Some("testfiles/jakefile.toml"), "strcmd", "", &executor);
         assert!(result.is_ok());
     }
 

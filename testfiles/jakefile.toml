@@ -2,3 +2,5 @@ say-hello = { command = "echo 'hello'" }
 say-hello-back = { command = "echo 'hello back'" }
 say-bye = { command = "echo 'bye'", depends_on = ["say-hello", "say-hello-back"] }
 list = { command = "ls" }
+strcmd = "echo ciao"
+wrongcommand = { command = ["echo hola"] }

@@ -1,8 +1,8 @@
-build = { command = "cargo build --target-dir target/" }
-test = { command = "cargo test" }
-clippy-fix = { command = "cargo clippy --fix --bin jake" }
-clippy = { command = "cargo clippy" }
-format = { command = "cargo fmt" }
-format-check = { command = "cargo fmt --check" }
-version-bump = { command = "python3 scripts/version_bump.py" }
-npm-publish = { command = "bash scripts/login_and_publish_to_npm.sh" }
+build = "cargo build --target-dir target/"
+test = "cargo test"
+clippy-fix = "cargo clippy --fix --bin jake"
+clippy = "cargo clippy"
+format = "cargo fmt"
+format-check = "cargo fmt --check"
+version-bump = "python3 scripts/version_bump.py"
+npm-publish = "bash scripts/login_and_publish_to_npm.sh"

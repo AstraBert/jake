@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 pub trait Executor {
     fn execute(&self, main_command: &str, args: Vec<&str>) -> anyhow::Result<()>;
@@ -33,10 +33,10 @@ pub struct TaskNode {
 impl TaskNode {
     pub fn new(command: String, dependencies: Vec<String>) -> Self {
         let hash_set = HashSet::from_iter(dependencies);
-        return Self {
-            command: command,
+        Self {
+            command,
             dependencies: hash_set,
-        };
+        }
     }
 }
 

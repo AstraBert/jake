@@ -1,8 +1,10 @@
+use std::collections::HashMap;
 use std::path::Path;
 
-use crate::models::Executor;
+use crate::models::{Executor, NodeState, TaskNode};
 use anyhow::{Result, anyhow};
-use toml::Table;
+use toml::map::Map;
+use toml::{Table, Value};
 
 const JAKEFILE: &str = "jakefile.toml";
 
@@ -22,6 +24,84 @@ pub fn parse_jakefile(file_path: Option<&str>) -> Result<Table> {
     } else {
         Err(anyhow!("jakefile.toml does not exist"))
     }
+}
+
+fn task_to_task_node(available_tasks: &Map<String, Value>, task: &str) -> Result<TaskNode> {
+    if !available_tasks.contains_key(task) {
+        return Err(anyhow!(
+            "task {} does not exist. Please define it within you jakefile.toml file",
+            task
+        ));
+    }
+    let task_node = if let Some(task_table) = available_tasks[task].as_table() {
+        if !task_table.contains_key("command") {
+            return Err(anyhow!(
+                "`command` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again"
+            ));
+        }
+        let mut dependencies: Vec<String> = vec![];
+        if task_table.contains_key("depends_on")
+            && let Some(depends) = task_table["depends_on"].as_array()
+        {
+            for value in depends {
+                match value.as_str() {
+                    Some(c) => dependencies.push(c.to_string()),
+                    None => continue,
+                }
+            }
+        }
+        let command = match task_table["command"].as_str() {
+            Some(c) => c,
+            None => return Err(anyhow!("Unsupported value for the task's command")),
+        };
+        TaskNode::new(command.to_string(), dependencies)
+    } else {
+        let command = match available_tasks[task].as_str() {
+            Some(t) => t,
+            None => return Err(anyhow!("Unsupported value for the task's command")),
+        };
+        let dependencies: Vec<String> = vec![];
+        TaskNode::new(command.to_string(), dependencies)
+    };
+    Ok(task_node)
+}
+
+fn resolve_dependencies(
+    available_tasks: &Map<String, Value>,
+    task: &str,
+    execution_order: &mut Vec<String>,
+    state_map: &mut HashMap<String, NodeState>,
+) -> Result<()> {
+    let task_node = task_to_task_node(available_tasks, task)?;
+    if let Some(current_state) = state_map.get(task) {
+        match current_state {
+            NodeState::Visited => {
+                return Ok(());
+            }
+            NodeState::Visiting => {
+                return Err(anyhow!(
+                    "Circular dependency issue detected with task {}",
+                    task
+                ));
+            }
+            NodeState::Univisted => {}
+        }
+    } else {
+        state_map.insert(task.to_string(), NodeState::Univisted);
+    }
+
+    for dep in task_node.dependencies {
+        resolve_dependencies(available_tasks, &dep, execution_order, state_map)?;
+    }
+
+    state_map
+        .entry(task.to_string())
+        .and_modify(|v| *v = NodeState::Visited)
+        .or_insert(NodeState::Visited);
+
+    execution_order.push(task_node.command);
+
+    Ok(())
 }
 
 pub fn execute_command(

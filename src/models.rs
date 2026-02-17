@@ -41,7 +41,7 @@ impl TaskNode {
 }
 
 pub enum NodeState {
-    Univisted,
+    Univisited,
     Visiting, // currently in the stack
     Visited,
 }

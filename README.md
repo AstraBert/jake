@@ -4,6 +4,13 @@
 
 It is based on TOML tasks definition (stored in a file called `jakefile.toml`) and can execute commands resolving their dependencies and passing additional options.
 
+## Features
+
+- Simple TOML syntax for task definition (no .PHONY, no spacing rules)
+- Dependency resolution with circular dependencies issues detection
+- Allows to pass extra arguments (as options) from the command line
+- Default command execution
+
 ## Installation
 
 With cargo (recommended):

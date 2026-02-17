@@ -29,7 +29,7 @@ pub fn parse_jakefile(file_path: Option<&str>) -> Result<Table> {
 fn task_to_task_node(available_tasks: &Map<String, Value>, task: &str) -> Result<TaskNode> {
     if !available_tasks.contains_key(task) {
         return Err(anyhow!(
-            "task {} does not exist. Please define it within you jakefile.toml file",
+            "Task {} does not exist. Please define it within you jakefile.toml file",
             task
         ));
     }
@@ -84,11 +84,16 @@ fn resolve_dependencies(
                     task
                 ));
             }
-            NodeState::Univisted => {}
+            NodeState::Univisited => {}
         }
     } else {
-        state_map.insert(task.to_string(), NodeState::Univisted);
+        state_map.insert(task.to_string(), NodeState::Univisited);
     }
+
+    state_map
+        .entry(task.to_string())
+        .and_modify(|v| *v = NodeState::Visiting)
+        .or_insert(NodeState::Visiting);
 
     for dep in task_node.dependencies {
         resolve_dependencies(available_tasks, &dep, execution_order, state_map)?;
@@ -119,38 +124,20 @@ pub fn execute_command(
         flags.split_whitespace().collect()
     };
     let available_tasks = parse_jakefile(jakefile_path)?;
-    if !available_tasks.contains_key(task) {
-        return Err(anyhow!(
-            "Task not available. Please define it within jakefile.toml"
-        ));
+    let mut execution_order: Vec<String> = vec![];
+    let mut state_map: HashMap<String, NodeState> = HashMap::new();
+    resolve_dependencies(&available_tasks, task, &mut execution_order, &mut state_map)?;
+    for command in &execution_order[..execution_order.len() - 1] {
+        let command_slice: Vec<&str> = command.split_whitespace().collect();
+        let command_args = if command_slice.len() > 1 {
+            &command_slice[1..]
+        } else {
+            &[]
+        };
+        executor.execute(command_slice[0], command_args.to_vec())?;
     }
-    let cmd;
-    if let Some(task_table) = available_tasks[task].as_table() {
-        if !task_table.contains_key("command") {
-            return Err(anyhow!(
-                "`command` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again"
-            ));
-        }
-        if task_table.contains_key("depends_on")
-            && let Some(depends) = task_table["depends_on"].as_array()
-        {
-            for value in depends {
-                match value.as_str() {
-                    Some(c) => execute_command(jakefile_path, c, "", executor)?,
-                    None => continue,
-                }
-            }
-        }
-        match task_table["command"].as_str() {
-            Some(c) => cmd = c,
-            None => return Err(anyhow!("Unsupported value for the task's command")),
-        }
-    } else {
-        match available_tasks[task].as_str() {
-            Some(t) => cmd = t,
-            None => return Err(anyhow!("Unsupported value for the task's command")),
-        }
-    };
+    // the actual command to execute is the last one in the execution order
+    let cmd = &execution_order[execution_order.len() - 1];
     let cmd_parts: Vec<&str> = cmd.split_whitespace().collect();
     let main_command = cmd_parts[0];
     if cmd_parts.len() == 1 && cmd_options.is_empty() {
@@ -308,17 +295,26 @@ mod tests {
     fn test_command_execution_task_not_found() {
         let executor = CommandExecutor::new();
         let result = execute_command(Some("testfiles/jakefile.toml"), "say-ciao", "", &executor);
-        assert!(result.is_err_and(|e| e.to_string()
-            == "Task not available. Please define it within jakefile.toml".to_string()));
+        assert_eq!(
+            result.is_err_and(|e| {
+                e.to_string()
+                == "Task say-ciao does not exist. Please define it within you jakefile.toml file"
+                    .to_string()
+            }),
+            true
+        );
     }
 
     #[test]
     fn test_command_execution_unexpected_format() {
         let executor = CommandExecutor::new();
         let result = execute_command(Some("testfiles/withdefault.toml"), "error", "", &executor);
-        assert!(result.is_err_and(
-            |e| e.to_string() == "Unsupported value for the task's command".to_string()
-        ));
+        assert_eq!(
+            result.is_err_and(
+                |e| e.to_string() == "Unsupported value for the task's command".to_string()
+            ),
+            true
+        );
     }
 
     #[test]
@@ -330,9 +326,9 @@ mod tests {
             "",
             &executor,
         );
-        assert!(result.is_err_and(
+        assert_eq!(result.is_err_and(
             |e| e.to_string() == "`command` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again".to_string()
-        ));
+        ), true);
     }
 
     #[test]
@@ -344,9 +340,12 @@ mod tests {
             "",
             &executor,
         );
-        assert!(result.is_err_and(
-            |e| e.to_string() == "Unsupported value for the task's command".to_string()
-        ));
+        assert_eq!(
+            result.is_err_and(
+                |e| e.to_string() == "Unsupported value for the task's command".to_string()
+            ),
+            true
+        );
     }
 
     #[test]
@@ -375,5 +374,52 @@ mod tests {
         let executor = CommandExecutor::new();
         let result = execute_default_command(Some("testfiles/jakefile.toml"), "", &executor);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_circular_deps_detection() {
+        let executor = CommandExecutor::new();
+        let result = execute_command(Some("testfiles/deps.toml"), "circular", "", &executor);
+        assert_eq!(
+            result.is_err_and(|e| e.to_string()
+                == "Circular dependency issue detected with task circular".to_string()),
+            true
+        )
+    }
+
+    #[test]
+    fn test_dependency_not_found() {
+        let executor = CommandExecutor::new();
+        let result = execute_command(Some("testfiles/deps.toml"), "no-exist", "", &executor);
+        assert_eq!(
+            result.is_err_and(|e| e.to_string()
+                == "Task no-deps does not exist. Please define it within you jakefile.toml file"
+                    .to_string()),
+            true
+        );
+    }
+
+    #[test]
+    fn test_dependency_wrong_type() {
+        let executor = CommandExecutor::new();
+        let result = execute_command(Some("testfiles/deps.toml"), "calls-wrong", "", &executor);
+        assert_eq!(
+            result.is_err_and(
+                |e| e.to_string() == "Unsupported value for the task's command".to_string()
+            ),
+            true
+        );
+    }
+
+    #[test]
+    fn test_dependency_wrong_command_syntax() {
+        let executor = CommandExecutor::new();
+        let result = execute_command(Some("testfiles/deps.toml"), "calls-command", "", &executor);
+        assert_eq!(
+            result.is_err_and(
+                |e| e.to_string() == "`command` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again".to_string()
+            ),
+            true
+        );
     }
 }

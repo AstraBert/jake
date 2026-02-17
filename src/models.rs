@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 pub trait Executor {
     fn execute(&self, main_command: &str, args: Vec<&str>) -> anyhow::Result<()>;
 }
@@ -21,4 +23,25 @@ impl Executor for CommandExecutor {
         cmd.wait()?;
         Ok(())
     }
+}
+
+pub struct TaskNode {
+    pub command: String,
+    pub dependencies: HashSet<String>,
+}
+
+impl TaskNode {
+    pub fn new(command: String, dependencies: Vec<String>) -> Self {
+        let hash_set = HashSet::from_iter(dependencies);
+        Self {
+            command,
+            dependencies: hash_set,
+        }
+    }
+}
+
+pub enum NodeState {
+    Univisited,
+    Visiting, // currently in the stack
+    Visited,
 }

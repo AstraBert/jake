@@ -1,0 +1,10 @@
+circular = { command = "echo 'hello'", depends_on = ["linear", "circ-dep"] }
+circ-dep = { command = "echo 'bye'", depends_on = ["circular"] }
+no-dep = "echo 'no-dep'"
+linear = { command = "echo 'name'", depends_on = ["no-dep"] }
+# simulate typo
+no-exist = { command = "echo 'ciao'", depends_on = ["no-deps"] }
+wrong-syntax = ["echo hello", "echo bye"]
+wrong-command = { comman = "echo 'ciao'", depends_on = ["no-deps"] }
+calls-wrong = { command = "echo 'name'", depends_on = ["wrong-syntax"] }
+calls-command = { command = "echo 'name'", depends_on = ["wrong-command"] }

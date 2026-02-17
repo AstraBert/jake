@@ -31,8 +31,8 @@ const features = process.env.npm_config_features
   ? `--features ${process.env.npm_config_features.replace(",", " ")}`
   : "";
 
-console.log(`Installing and compiling jake 0.2.0 ${features} ...`);
-exec(`cargo install jake --vers 0.2.0 ${features}`, (error, stdout, stderr) => {
+console.log(`Installing and compiling jake 0.3.0 ${features} ...`);
+exec(`cargo install jake --vers 0.3.0 ${features}`, (error, stdout, stderr) => {
   console.log(stdout);
   if (error || stderr) {
     console.log(error || stderr);

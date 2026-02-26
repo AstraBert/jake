@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env;
 use std::path::Path;
 
 use crate::models::{Executor, NodeState, TaskNode};
@@ -8,12 +9,39 @@ use toml::{Table, Value};
 
 const JAKEFILE: &str = "jakefile.toml";
 
+pub fn is_posix_os() -> bool {
+    let os_familiy = std::env::consts::FAMILY;
+    os_familiy == "unix"
+}
+
+fn resolve_jakefile_path() -> Result<String> {
+    let current_dir = env::current_dir()?;
+    let jakefile_path = current_dir.join(JAKEFILE);
+    if jakefile_path.exists() {
+        return Ok(jakefile_path.to_string_lossy().to_string());
+    }
+    for ancestor in current_dir.ancestors() {
+        let jakefile = ancestor.join(JAKEFILE);
+        if jakefile.exists() {
+            return Ok(jakefile.to_string_lossy().to_string());
+        }
+    }
+
+    Err(anyhow!(
+        "Could not find jakefile.toml in the current directory or in any of its ancestors"
+    ))
+}
+
 pub fn parse_jakefile(file_path: Option<&str>) -> Result<Table> {
     let owned_path;
     let path = match file_path {
-        None => Path::new(JAKEFILE),
-        Some(p) => {
+        None => {
+            let p = resolve_jakefile_path()?;
             owned_path = p;
+            Path::new(&owned_path)
+        }
+        Some(p) => {
+            owned_path = p.to_string();
             Path::new(&owned_path)
         }
     };
@@ -176,6 +204,8 @@ pub fn execute_default_command(
 
 #[cfg(test)]
 mod tests {
+    use serial_test::serial;
+
     use crate::models::CommandExecutor;
 
     use super::*;
@@ -244,6 +274,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_mock_command_execution() {
         let mock_executor = MockCommandExecutor::new();
         let result = execute_command(
@@ -421,5 +452,37 @@ mod tests {
             ),
             true
         );
+    }
+
+    #[test]
+    #[serial]
+    fn test_resolve_jakefile_path_current_dir() {
+        let current_dir =
+            env::current_dir().expect("Should be able to resolve the current directory");
+        let resolved_path =
+            resolve_jakefile_path().expect("Should be able to resolve jakefile path");
+        assert_eq!(
+            resolved_path,
+            current_dir.join(JAKEFILE).to_string_lossy().to_string()
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_resolve_jakefile_path_subdir() {
+        let parent_dir =
+            env::current_dir().expect("Should be able to resolve the current directory");
+        let new_dir = parent_dir.join(".github/workflows");
+        env::set_current_dir(new_dir).expect("Should be able to set a new current directory");
+        let cur_dir = env::current_dir().expect("Should be able to get current directory");
+        assert_eq!(cur_dir, parent_dir.join(".github/workflows"));
+        let resolved_path =
+            resolve_jakefile_path().expect("Should be able to resolve jakefile path");
+        assert_eq!(
+            resolved_path,
+            parent_dir.join(JAKEFILE).to_string_lossy().to_string()
+        );
+        env::set_current_dir(parent_dir)
+            .expect("Should be able to set the current directory back to the original one");
     }
 }

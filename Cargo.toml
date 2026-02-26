@@ -1,6 +1,6 @@
 [package]
 name = "jake"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 license-file = "LICENSE"
 readme = "README.md"
@@ -12,3 +12,6 @@ keywords = ["make", "task-execution", "automation", "cli"]
 anyhow = "1.0.101"
 clap = { version = "4.5.58", features = ["derive"] }
 toml = { version = "1.0.1", features = ["preserve_order"] }
+
+[dev-dependencies]
+serial_test = "3.4.0"

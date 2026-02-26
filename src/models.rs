@@ -14,8 +14,12 @@ impl CommandExecutor {
 
 impl Executor for CommandExecutor {
     fn execute(&self, main_command: &str, args: Vec<&str>) -> anyhow::Result<()> {
-        let mut cmd = std::process::Command::new(main_command)
-            .args(args)
+        let mut command_args = args;
+        command_args.insert(0, main_command);
+        let full_command = command_args.join(" ");
+        let mut cmd = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(full_command)
             .stdin(std::process::Stdio::inherit())
             .stdout(std::process::Stdio::inherit())
             .stderr(std::process::Stdio::inherit())

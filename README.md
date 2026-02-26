@@ -10,6 +10,8 @@ It is based on TOML tasks definition (stored in a file called `jakefile.toml`) a
 - Dependency resolution with circular dependencies issues detection
 - Allows to pass extra arguments (as options) from the command line
 - Default command execution
+- Evaluates composite commands (like `cat README.md | grep Features` or `cd src/ && pwd`)
+- You can execute a task from any subdirectory of the directory where `jakefile.toml` is stored
 
 ## Installation
 

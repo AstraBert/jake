@@ -1,7 +1,8 @@
 use crate::{
-    load::{execute_command, execute_default_command},
+    load::{execute_command, execute_default_command, is_posix_os},
     models::CommandExecutor,
 };
+use anyhow::anyhow;
 use clap::Parser;
 
 mod load;
@@ -9,7 +10,7 @@ mod models;
 
 /// Make-like task executor for Unix-based operating systems
 #[derive(Parser, Debug)]
-#[command(version = "0.3.0")]
+#[command(version = "0.4.0")]
 #[command(name = "jake")]
 #[command(about, long_about = None)]
 struct Args {
@@ -22,6 +23,11 @@ struct Args {
 }
 
 fn main() -> anyhow::Result<()> {
+    if !is_posix_os() {
+        return Err(anyhow!(
+            "jake` is not supported on operating systems outside of the Unix family"
+        ));
+    }
     let args = Args::parse();
     let executor = CommandExecutor::new();
     match args.task {

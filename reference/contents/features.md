@@ -21,8 +21,8 @@ The table below compares `jake` against [`just`](https://github.com/casey/just) 
 
 | Feature                          | jake | just | make |
 |----------------------------------|------|------|------|
-| Dependency graph resolution      | ✅   | ❌    | ✅  |
-| Circular dependency detection    | ✅   | ❌    | ❌   |
+| Dependency graph resolution      | ✅   | ✅    | ✅  |
+| Circular dependency detection    | ✅   | ✅    | ❌   |
 | Extra arguments / options        | ✅   | ✅   | ⚠️  |
 | Default task execution           | ✅   | ✅   | ✅  |
 | Composite commands               | ✅   | ✅   | ✅  |

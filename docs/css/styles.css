@@ -55,6 +55,30 @@ main > .tagline {
     font-weight: 100;
 }
 
+main > .docs {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    justify-content: center;
+    padding-bottom: 30px;
+}
+
+main > .docs a {
+    font-family: "Reem Kufi", sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: inherit;
+    padding: 0.4rem 1rem;
+    border: 2px solid currentColor;
+    border-radius: 4px;
+    transition: opacity 0.2s ease;
+}
+
+main > .docs a:hover {
+    opacity: 0.6;
+}
+
 .icons-social i {
     padding: 10px;
 }

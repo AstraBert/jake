@@ -2,3 +2,5 @@
 test.mock
 .venv/
 Makefile
+docs/*.html
+!docs/index.html

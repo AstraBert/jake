@@ -1,0 +1,118 @@
+/* Typography */
+
+html {
+    font-family: "Roboto", sans-serif;
+}
+
+@media (min-width: 576px) {
+    html {
+        font-size: 14px;
+    }
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+@media (min-width: 992px) {
+    html {
+        font-size: 18px;
+    }
+}
+
+@media (min-width: 1200px) {
+    html {
+        font-size: 20px;
+    }
+}
+
+/* Custom Styles */
+
+nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 0 30px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    background-color: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+}
+
+nav a {
+    font-family: "Reem Kufi", sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: inherit;
+}
+
+nav a:hover {
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding: 60px 30px;
+    align-items: center;
+    padding-top: 86px;
+}
+
+main > .intro {
+    font-family: "Reem Kufi", sans-serif;
+    font-size: 3.75em;
+    font-weight: 600;
+    text-align: center;
+    width: 100%;
+}
+
+main > .tagline {
+    font-size: 1.5rem;
+    margin: 1.5rem 0;
+    font-weight: 100;
+    text-align: center;
+    width: 100%;
+}
+
+main > .corpus {
+    text-align: justify;
+    width: 100%;
+    max-width: 800px;
+    margin-top: 2rem;
+}
+
+main > .corpus p {
+    line-height: 1.7;
+    margin-bottom: 1.25rem;
+    font-size: 1rem;
+}
+
+main > .corpus pre {
+    background-color: #f4f4f4;
+    padding: 1rem 1.25rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+}
+
+main > .corpus code {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.9em;
+    background-color: #f4f4f4;
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+}
+
+main > .corpus pre code {
+    background-color: transparent;
+    padding: 0;
+    font-size: 0.875rem;
+}

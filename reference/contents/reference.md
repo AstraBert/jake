@@ -70,7 +70,13 @@ list = "ls"
 
 ### Running Tasks
 
-`jake` can be invoked from any subdirectory of the project — it will walk up the directory tree to locate the nearest `jakefile.toml`.
+`jake` can be invoked from any subdirectory of the project: it will walk up the directory tree to locate the nearest `jakefile.toml`.
+
+**List all available tasks**
+
+```bash
+jake --list
+```
 
 **Execute the default task**
 

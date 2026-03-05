@@ -54,6 +54,17 @@ pub fn parse_jakefile(file_path: Option<&str>) -> Result<Table> {
     }
 }
 
+pub fn list_jakefile_tasks(file_path: Option<&str>) -> Result<Vec<String>> {
+    let parsed = parse_jakefile(file_path)?;
+    let mut commands: Vec<String> = vec![];
+
+    for key in parsed.keys() {
+        commands.push(key.clone().to_owned());
+    }
+
+    Ok(commands)
+}
+
 fn task_to_task_node(available_tasks: &Map<String, Value>, task: &str) -> Result<TaskNode> {
     if !available_tasks.contains_key(task) {
         return Err(anyhow!(
@@ -484,5 +495,23 @@ mod tests {
         );
         env::set_current_dir(parent_dir)
             .expect("Should be able to set the current directory back to the original one");
+    }
+
+    #[test]
+    fn test_list_jakefile_tasks() {
+        let tasks = list_jakefile_tasks(Some("testfiles/jakefile.toml"))
+            .expect("Should be able to list tasks");
+        let expected_tasks: Vec<String> = vec![
+            "say-hello".to_string(),
+            "say-hello-back".to_string(),
+            "say-bye".to_string(),
+            "list".to_string(),
+            "strcmd".to_string(),
+            "wrongcommand".to_string(),
+        ];
+        assert_eq!(tasks.len(), expected_tasks.len());
+        for task in &expected_tasks {
+            assert!(tasks.contains(task))
+        }
     }
 }

@@ -30,7 +30,7 @@ The table below compares `jake` against [`just`](https://github.com/casey/just) 
 | Simple, readable syntax          | ✅   | ✅   | ❌   |
 | No special spacing rules         | ✅   | ✅   | ❌   |
 | Read .env                        | ❌    | ✅   | ❌   |
-| List available commands          | ❌    | ✅   | ❌   |
+| List available commands          | ✅    | ✅   | ❌   |
 | Recipes written in arbitrary languages | ❌ | ✅   | ❌   |
 
 

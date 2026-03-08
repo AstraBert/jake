@@ -1,4 +1,5 @@
 use crate::{
+    initialize::write_jakefile,
     load::{execute_command, execute_default_command, is_posix_os, list_jakefile_tasks},
     models::CommandExecutor,
 };
@@ -6,12 +7,13 @@ use anyhow::anyhow;
 use clap::Parser;
 
 mod env_vars;
+mod initialize;
 mod load;
 mod models;
 
 /// Make-like task executor for Unix-based operating systems
 #[derive(Parser, Debug)]
-#[command(version = "0.4.1")]
+#[command(version = "0.5.0")]
 #[command(name = "jake")]
 #[command(about, long_about = None)]
 struct Args {
@@ -29,6 +31,10 @@ struct Args {
     /// List the tasks available within jakefile.toml
     #[arg(long, default_value_t = false)]
     list: bool,
+
+    /// Initialize a Jakefile by providing a list of comma-separated tasks
+    #[arg(long, default_value = None)]
+    init: Option<String>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -38,6 +44,10 @@ fn main() -> anyhow::Result<()> {
         ));
     }
     let args = Args::parse();
+    if let Some(tasks) = args.init {
+        write_jakefile(&tasks, None)?;
+        return Ok(());
+    }
     if args.list {
         let tasks = list_jakefile_tasks(None)?;
         let task_list = tasks.join("\n- ");

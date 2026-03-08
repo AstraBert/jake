@@ -17,6 +17,23 @@ With npm:
 npm install -g @cle-does-things/jake@latest
 ```
 
+### Initialization
+
+You can create a boilerplate `jakefile.toml` with the `--init` option:
+
+```bash
+jake --init "task1,task2" # tasks need to be provided as a comma-separated list
+```
+
+This will write a `jakefile.toml` in the current working directory, which will look like this:
+
+```toml
+task1 = "echo 'No task yet for task1'"
+task2 = "echo 'No task yet for task2'"
+```
+
+You can then customize the file as needed.
+
 ### Task Definition
 
 Tasks are defined in a file called `jakefile.toml` placed either in the working directory where `jake` is executed, or anywhere up the directory tree. Each entry in the file represents a task, mapping a task name to either a plain string command or an object with additional configuration.

@@ -6,6 +6,7 @@ It is based on TOML tasks definition (stored in a file called `jakefile.toml`) a
 
 ## Features
 
+- Create a boilerplate `jakefile.toml` file with `jake --init 'task1,task2,...'`
 - Simple TOML syntax for task definition (no .PHONY, no spacing rules)
 - Dependency resolution with circular dependencies issues detection
 - Allows to pass extra arguments (as options) from the command line
@@ -58,6 +59,19 @@ In cases where the command does not depend on anything, you can also provide it 
 You can use the `default` task name to indicate the task that should be executed by default when none is provided to `jake` (otherwise, the default task will be the first one in the file).
 
 ## Example Usage
+
+Create a boilerplate `jakefile.toml`:
+
+```bash
+jake --init 'task1,task2' # tasks need to be provided as a comma-separated list
+```
+
+Output (as `jakefile.toml` in the current working directory):
+
+```toml
+task1 = "echo 'No task yet for task1'"
+task2 = "echo 'No task yet for task2'"
+```
 
 Execute default task:
 

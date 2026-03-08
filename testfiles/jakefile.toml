@@ -4,3 +4,4 @@ say-bye = { command = "echo 'bye'", depends_on = ["say-hello", "say-hello-back"]
 list = { command = "ls" }
 strcmd = "echo ciao"
 wrongcommand = { command = ["echo hola"] }
+env_var = "echo $HELLO"

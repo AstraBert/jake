@@ -153,6 +153,7 @@ pub fn execute_command(
     task: &str,
     flags: &str,
     executor: &dyn Executor,
+    load_env: bool,
 ) -> Result<()> {
     if task.is_empty() {
         return Ok(());
@@ -173,22 +174,22 @@ pub fn execute_command(
         } else {
             &[]
         };
-        executor.execute(command_slice[0], command_args.to_vec())?;
+        executor.execute(command_slice[0], command_args.to_vec(), load_env)?;
     }
     // the actual command to execute is the last one in the execution order
     let cmd = &execution_order[execution_order.len() - 1];
     let cmd_parts: Vec<&str> = cmd.split_whitespace().collect();
     let main_command = cmd_parts[0];
     if cmd_parts.len() == 1 && cmd_options.is_empty() {
-        executor.execute(main_command, vec![])?;
+        executor.execute(main_command, vec![], load_env)?;
     } else if cmd_parts.len() == 1 && !cmd_options.is_empty() {
-        executor.execute(main_command, cmd_options)?;
+        executor.execute(main_command, cmd_options, load_env)?;
     } else if cmd_parts.len() > 1 && cmd_options.is_empty() {
         let cmd_slice = &cmd_parts[1..];
-        executor.execute(main_command, cmd_slice.to_vec())?;
+        executor.execute(main_command, cmd_slice.to_vec(), load_env)?;
     } else {
         let cmd_slice = [&cmd_parts[1..], &cmd_options[..]].concat();
-        executor.execute(main_command, cmd_slice)?;
+        executor.execute(main_command, cmd_slice, load_env)?;
     }
     Ok(())
 }
@@ -197,16 +198,17 @@ pub fn execute_default_command(
     jakefile_path: Option<&str>,
     flags: &str,
     executor: &dyn Executor,
+    load_env: bool,
 ) -> Result<()> {
     let available_tasks = parse_jakefile(jakefile_path)?;
     if available_tasks.contains_key("default") {
-        execute_command(jakefile_path, "default", flags, executor)?;
+        execute_command(jakefile_path, "default", flags, executor, load_env)?;
     } else {
         let first_key = available_tasks.keys().next();
         match first_key {
             None => return Err(anyhow!("could not find any task within jakefile")),
             Some(task) => {
-                execute_command(jakefile_path, task, flags, executor)?;
+                execute_command(jakefile_path, task, flags, executor, load_env)?;
             }
         }
     }
@@ -230,7 +232,12 @@ mod tests {
     }
 
     impl Executor for MockCommandExecutor {
-        fn execute(&self, main_command: &str, args: Vec<&str>) -> anyhow::Result<()> {
+        fn execute(
+            &self,
+            main_command: &str,
+            args: Vec<&str>,
+            _load_env: bool,
+        ) -> anyhow::Result<()> {
             let full_command = main_command.to_owned() + " " + &args.join(" ");
             std::fs::write("test.mock", full_command)?;
             Ok(())
@@ -238,6 +245,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_parse_jakefile() {
         let result = parse_jakefile(Some("testfiles/jakefile.toml"));
         match result {
@@ -293,23 +301,35 @@ mod tests {
             "list",
             "-la /hello/something",
             &mock_executor,
+            false,
         );
         assert!(result.is_ok());
         let mock_content =
             std::fs::read_to_string("test.mock").expect("Should be able to read test.mock");
         assert_eq!(mock_content.trim(), "ls -la /hello/something");
-        let result_1 = execute_command(Some("testfiles/jakefile.toml"), "list", "", &mock_executor);
+        let result_1 = execute_command(
+            Some("testfiles/jakefile.toml"),
+            "list",
+            "",
+            &mock_executor,
+            false,
+        );
         assert!(result_1.is_ok());
         let mock_content_1 =
             std::fs::read_to_string("test.mock").expect("Should be able to read test.mock");
         assert_eq!(mock_content_1.trim(), "ls");
-        let result_2 = execute_default_command(Some("testfiles/jakefile.toml"), "", &mock_executor);
+        let result_2 =
+            execute_default_command(Some("testfiles/jakefile.toml"), "", &mock_executor, false);
         assert!(result_2.is_ok());
         let mock_content_2 =
             std::fs::read_to_string("test.mock").expect("Should be able to read test.mock");
         assert_eq!(mock_content_2.trim(), "echo 'hello'");
-        let result_3 =
-            execute_default_command(Some("testfiles/withdefault.toml"), "", &mock_executor);
+        let result_3 = execute_default_command(
+            Some("testfiles/withdefault.toml"),
+            "",
+            &mock_executor,
+            false,
+        );
         assert!(result_3.is_ok());
         let mock_content_3 =
             std::fs::read_to_string("test.mock").expect("Should be able to read test.mock");
@@ -319,6 +339,7 @@ mod tests {
             "strcmd",
             "",
             &mock_executor,
+            false,
         );
         assert!(result_4.is_ok());
         let mock_content_4 =
@@ -327,16 +348,30 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_command_execution() {
         let executor = CommandExecutor::new();
-        let result = execute_command(Some("testfiles/jakefile.toml"), "say-hello", "", &executor);
+        let result = execute_command(
+            Some("testfiles/jakefile.toml"),
+            "say-hello",
+            "",
+            &executor,
+            false,
+        );
         assert!(result.is_ok());
     }
 
     #[test]
+    #[serial]
     fn test_command_execution_task_not_found() {
         let executor = CommandExecutor::new();
-        let result = execute_command(Some("testfiles/jakefile.toml"), "say-ciao", "", &executor);
+        let result = execute_command(
+            Some("testfiles/jakefile.toml"),
+            "say-ciao",
+            "",
+            &executor,
+            false,
+        );
         assert_eq!(
             result.is_err_and(|e| {
                 e.to_string()
@@ -348,9 +383,16 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_command_execution_unexpected_format() {
         let executor = CommandExecutor::new();
-        let result = execute_command(Some("testfiles/withdefault.toml"), "error", "", &executor);
+        let result = execute_command(
+            Some("testfiles/withdefault.toml"),
+            "error",
+            "",
+            &executor,
+            false,
+        );
         assert_eq!(
             result.is_err_and(
                 |e| e.to_string() == "Unsupported value for the task's command".to_string()
@@ -360,6 +402,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_command_execution_no_command() {
         let executor = CommandExecutor::new();
         let result = execute_command(
@@ -367,6 +410,7 @@ mod tests {
             "nocommand",
             "",
             &executor,
+            false,
         );
         assert_eq!(result.is_err_and(
             |e| e.to_string() == "`command` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again".to_string()
@@ -374,6 +418,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_command_execution_wrong_command() {
         let executor = CommandExecutor::new();
         let result = execute_command(
@@ -381,6 +426,7 @@ mod tests {
             "wrongcommand",
             "",
             &executor,
+            false,
         );
         assert_eq!(
             result.is_err_and(
@@ -391,37 +437,61 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_command_execution_with_deps() {
         let executor = CommandExecutor::new();
-        let result = execute_command(Some("testfiles/jakefile.toml"), "say-bye", "", &executor);
+        let result = execute_command(
+            Some("testfiles/jakefile.toml"),
+            "say-bye",
+            "",
+            &executor,
+            false,
+        );
         assert!(result.is_ok());
     }
 
     #[test]
+    #[serial]
     fn test_command_execution_from_str() {
         let executor = CommandExecutor::new();
-        let result = execute_command(Some("testfiles/jakefile.toml"), "strcmd", "", &executor);
+        let result = execute_command(
+            Some("testfiles/jakefile.toml"),
+            "strcmd",
+            "",
+            &executor,
+            false,
+        );
         assert!(result.is_ok());
     }
 
     #[test]
+    #[serial]
     fn test_default_command_with_default() {
         let executor = CommandExecutor::new();
-        let result = execute_default_command(Some("testfiles/withdefault.toml"), "", &executor);
+        let result =
+            execute_default_command(Some("testfiles/withdefault.toml"), "", &executor, false);
         assert!(result.is_ok());
     }
 
     #[test]
+    #[serial]
     fn test_default_command_first_key() {
         let executor = CommandExecutor::new();
-        let result = execute_default_command(Some("testfiles/jakefile.toml"), "", &executor);
+        let result = execute_default_command(Some("testfiles/jakefile.toml"), "", &executor, false);
         assert!(result.is_ok());
     }
 
     #[test]
+    #[serial]
     fn test_circular_deps_detection() {
         let executor = CommandExecutor::new();
-        let result = execute_command(Some("testfiles/deps.toml"), "circular", "", &executor);
+        let result = execute_command(
+            Some("testfiles/deps.toml"),
+            "circular",
+            "",
+            &executor,
+            false,
+        );
         assert_eq!(
             result.is_err_and(|e| e.to_string()
                 == "Circular dependency issue detected with task circular".to_string()),
@@ -430,9 +500,16 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_dependency_not_found() {
         let executor = CommandExecutor::new();
-        let result = execute_command(Some("testfiles/deps.toml"), "no-exist", "", &executor);
+        let result = execute_command(
+            Some("testfiles/deps.toml"),
+            "no-exist",
+            "",
+            &executor,
+            false,
+        );
         assert_eq!(
             result.is_err_and(|e| e.to_string()
                 == "Task no-deps does not exist. Please define it within you jakefile.toml file"
@@ -442,9 +519,16 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_dependency_wrong_type() {
         let executor = CommandExecutor::new();
-        let result = execute_command(Some("testfiles/deps.toml"), "calls-wrong", "", &executor);
+        let result = execute_command(
+            Some("testfiles/deps.toml"),
+            "calls-wrong",
+            "",
+            &executor,
+            false,
+        );
         assert_eq!(
             result.is_err_and(
                 |e| e.to_string() == "Unsupported value for the task's command".to_string()
@@ -454,15 +538,36 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_dependency_wrong_command_syntax() {
         let executor = CommandExecutor::new();
-        let result = execute_command(Some("testfiles/deps.toml"), "calls-command", "", &executor);
+        let result = execute_command(
+            Some("testfiles/deps.toml"),
+            "calls-command",
+            "",
+            &executor,
+            false,
+        );
         assert_eq!(
             result.is_err_and(
                 |e| e.to_string() == "`command` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again".to_string()
             ),
             true
         );
+    }
+
+    #[test]
+    #[serial]
+    fn test_command_load_dotenv_variable() {
+        let executor = CommandExecutor::new();
+        let result = execute_command(
+            Some("testfiles/jakefile.toml"),
+            "env_var",
+            "",
+            &executor,
+            true,
+        );
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -498,6 +603,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_list_jakefile_tasks() {
         let tasks = list_jakefile_tasks(Some("testfiles/jakefile.toml"))
             .expect("Should be able to list tasks");
@@ -508,6 +614,7 @@ mod tests {
             "list".to_string(),
             "strcmd".to_string(),
             "wrongcommand".to_string(),
+            "env_var".to_string(),
         ];
         assert_eq!(tasks.len(), expected_tasks.len());
         for task in &expected_tasks {

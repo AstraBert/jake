@@ -29,7 +29,7 @@ The table below compares `jake` against [`just`](https://github.com/casey/just) 
 | Subdirectory invocation          | ✅   | ✅   | ❌   |
 | Simple, readable syntax          | ✅   | ✅   | ❌   |
 | No special spacing rules         | ✅   | ✅   | ❌   |
-| Read .env                        | ❌    | ✅   | ❌   |
+| Read .env                        | ✅    | ✅   | ❌   |
 | List available commands          | ✅    | ✅   | ❌   |
 | Recipes written in arbitrary languages | ❌ | ✅   | ❌   |
 

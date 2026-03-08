@@ -5,6 +5,7 @@ use crate::{
 use anyhow::anyhow;
 use clap::Parser;
 
+mod env_vars;
 mod load;
 mod models;
 
@@ -20,6 +21,10 @@ struct Args {
     /// Options for the command to be executed with
     #[arg(long, default_value = "", allow_hyphen_values = true)]
     options: String,
+
+    /// Resolve and load a .env file from the current path of its ancestors
+    #[arg(long, default_value_t = false)]
+    env: bool,
 
     /// List the tasks available within jakefile.toml
     #[arg(long, default_value_t = false)]
@@ -41,8 +46,8 @@ fn main() -> anyhow::Result<()> {
     }
     let executor = CommandExecutor::new();
     match args.task {
-        Some(t) => execute_command(None, &t, &args.options, &executor)?,
-        None => execute_default_command(None, &args.options, &executor)?,
+        Some(t) => execute_command(None, &t, &args.options, &executor, args.env)?,
+        None => execute_default_command(None, &args.options, &executor, args.env)?,
     }
     Ok(())
 }

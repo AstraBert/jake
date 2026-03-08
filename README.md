@@ -12,6 +12,8 @@ It is based on TOML tasks definition (stored in a file called `jakefile.toml`) a
 - Default command execution
 - Evaluates composite commands (like `cat README.md | grep Features` or `cd src/ && pwd`)
 - You can execute a task from any subdirectory of the directory where `jakefile.toml` is stored
+- You can list tasks, by passing the `--list` flag
+- You can load `.env` file (in the same working directory or anywhere up in the directory tree), by passing the `--env` flag
 
 ## Installation
 
@@ -37,6 +39,7 @@ say-hello = "echo 'hello'"
 say-hello-back = { command = "echo 'hello back'" }
 say-bye = { command = "echo 'bye'", depends_on = ["say-hello", "say-hello-back"] }
 list = "ls"
+env-variable = "echo $HELLO"
 ```
 
 And here is the anatomy of a definition:
@@ -118,6 +121,35 @@ drwxr-xr-x@   9 clee  staff   288 Feb 13 10:20 .git
 -rw-r--r--@   1 clee  staff   152 Feb 13 11:16 README.md
 drwxr-xr-x@   4 clee  staff   128 Feb 13 10:22 src
 drwxr-xr-x@   6 clee  staff   192 Feb 13 10:22 target
+```
+
+List all tasks:
+
+```bash
+jake --list
+```
+
+Output:
+
+```text
+Available tasks:
+- default
+- say-hello
+- say-hello-back
+...
+```
+
+Run a task that requires an environment variable by loading a `.env` file:
+
+```bash
+echo "HELLO=hello" >> .env
+jake env-var --env
+```
+
+Output:
+
+```text
+hello
 ```
 
 ## In GitHub CI/CD

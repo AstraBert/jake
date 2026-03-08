@@ -19,7 +19,7 @@ npm install -g @cle-does-things/jake@latest
 
 ### Task Definition
 
-Tasks are defined in a file called `jakefile.toml` placed at the root of your project. Each entry in the file represents a task, mapping a task name to either a plain string command or an object with additional configuration.
+Tasks are defined in a file called `jakefile.toml` placed either in the working directory where `jake` is executed, or anywhere up the directory tree. Each entry in the file represents a task, mapping a task name to either a plain string command or an object with additional configuration.
 
 A task can be defined in two ways:
 
@@ -57,6 +57,18 @@ default = { command = "cat README.md" }
 ```
 
 If no `default` task is explicitly defined, `jake` will fall back to the first task in the file.
+
+### Tasks Referencing Environment Variables
+
+You can use environment variables inside any task command:
+
+```toml
+env_var = "echo $HELLO"
+```
+
+`jake` resolves environment variables from `export` statements or a `.env` file, either in the working directory where `jake` is executed, or anywhere up the directory tree.
+
+To enable loading `.env` files, you need to provide the `--env` flag to the `jake` command.
 
 ### Full Example
 
@@ -131,3 +143,29 @@ drwxr-xr-x@   6 user  staff   192 Feb 13 10:22 target
 ```
 
 The value passed to `--options` is appended to the task's command at execution time, so `jake list --options "-la"` effectively runs `ls -la`.
+
+**Load a `.env` file and execute a task**
+
+If a task requires an environment variable, e.g.:
+
+```toml
+env_var = "echo $HELLO"
+```
+
+You can either provide it with an `export` statement or define it within a `.env` file:
+
+```env
+HELLO="hello"
+```
+
+Now run `jake` with `--env`:
+
+```bash
+jake env_var --env
+```
+
+Output:
+
+```text
+hello
+```

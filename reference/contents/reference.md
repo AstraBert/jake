@@ -186,3 +186,33 @@ Output:
 ```text
 hello
 ```
+
+### Running scripts defined in a `package.json`
+
+In environments such as JavaScript or TypeScript codebases, `jake` can execute scripts contained in `package.json`.
+
+With scripts defined like this in `package.json`:
+
+```json
+{
+  "scripts": {
+    "build": "bun build src/index.ts --outdir ./dist --target node"
+  }
+}
+```
+
+`jake` can execute the `build` script as its own task by using the `--js` flag:
+
+```bash
+jake build --js
+```
+
+Which would output:
+
+```text
+Bundled 1 module in 20ms
+
+  index.js  0.66 KB  (entry point)
+```
+
+`package.json` can be placed either in the working directory where `jake` is executed, or anywhere up the directory tree.

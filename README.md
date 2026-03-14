@@ -15,6 +15,7 @@ It is based on TOML tasks definition (stored in a file called `jakefile.toml`) a
 - You can execute a task from any subdirectory of the directory where `jakefile.toml` is stored
 - You can list tasks, by passing the `--list` flag
 - You can load `.env` file (in the same working directory or anywhere up in the directory tree), by passing the `--env` flag
+- Execute scripts from a `package.json` file with the `--js` flag.
 
 ## Installation
 
@@ -165,6 +166,25 @@ Output:
 ```text
 hello
 ```
+
+If you are in a JS/TS application using a `package.json` for its scripts, as in this example:
+
+```json
+{
+  "scripts": {
+    "test": "vitest",
+    "dev": "vite"
+  }
+}
+```
+
+You can invoke the scripts with `jake` using the `--js` flag:
+
+```bash
+jake dev --js
+```
+
+You can invoke a script from the directory in which `package.json` is stored and from all its subdirectories.
 
 ## In GitHub CI/CD
 

@@ -2,6 +2,7 @@ use crate::{
     initialize::write_jakefile,
     load::{execute_command, execute_default_command, is_posix_os, list_jakefile_tasks},
     models::CommandExecutor,
+    package_json::execute_script,
 };
 use anyhow::anyhow;
 use clap::Parser;
@@ -10,10 +11,11 @@ mod env_vars;
 mod initialize;
 mod load;
 mod models;
+mod package_json;
 
 /// Make-like task executor for Unix-based operating systems
 #[derive(Parser, Debug)]
-#[command(version = "0.5.0")]
+#[command(version = "0.6.0")]
 #[command(name = "jake")]
 #[command(about, long_about = None)]
 struct Args {
@@ -31,6 +33,10 @@ struct Args {
     /// List the tasks available within jakefile.toml
     #[arg(long, default_value_t = false)]
     list: bool,
+
+    /// Load and execute scripts from a package.json file instead of a jakefile.toml
+    #[arg(long, default_value_t = false)]
+    js: bool,
 
     /// Initialize a Jakefile by providing a list of comma-separated tasks
     #[arg(long, default_value = None)]
@@ -55,6 +61,16 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
     let executor = CommandExecutor::new();
+    if args.js {
+        if let Some(script_name) = args.task {
+            execute_script(None, script_name, args.env, &executor)?;
+        } else {
+            return Err(anyhow!(
+                "No script name provided, please provide one or, if you wish to execute the default command from jakefile.toml, do not pass the `--js` flag."
+            ));
+        }
+        return Ok(());
+    }
     match args.task {
         Some(t) => execute_command(None, &t, &args.options, &executor, args.env)?,
         None => execute_default_command(None, &args.options, &executor, args.env)?,

@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "hello": "echo 'hello'",
+    "test": "true",
+    "year": 2026
+  },
+  "type": "jake testing scripts"
+}

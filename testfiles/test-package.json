@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "hello": "echo 'hello'",
+    "test": "true"
+  },
+  "type": "jake testing scripts"
+}

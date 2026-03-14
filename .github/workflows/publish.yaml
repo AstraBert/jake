@@ -43,3 +43,8 @@ jobs:
         run: cargo publish
         env:
           CARGO_API_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          generateReleaseNotes: true

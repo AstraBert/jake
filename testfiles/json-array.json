@@ -1,0 +1,4 @@
+[
+  { "script": "test", "command": "true" },
+  { "script": "build", "command": "false" }
+]

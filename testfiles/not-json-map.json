@@ -1,0 +1,4 @@
+{
+  "scripts": true,
+  "type": "jake test files"
+}

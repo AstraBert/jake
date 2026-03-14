@@ -1,5 +1,5 @@
 /target
-test.mock
+*.mock
 .venv/
 Makefile
 docs/*.html

@@ -19,7 +19,7 @@ fn resolve_dotenv_path() -> Result<String> {
     }
 
     Err(anyhow!(
-        "Could not find jakefile.toml in the current directory or in any of its ancestors"
+        "Could not find a .env file in the current directory or in any of its ancestors"
     ))
 }
 

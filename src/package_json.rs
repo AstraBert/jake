@@ -84,7 +84,7 @@ pub fn execute_script(
 
 #[cfg(test)]
 mod tests {
-    use crate::models::CommandExecutor;
+    use crate::models::{CommandExecutor, DryRunExecutor};
 
     use super::*;
 
@@ -253,6 +253,15 @@ mod tests {
     #[serial]
     fn test_command_execution() {
         let executor = CommandExecutor::new();
+        let path = Some("testfiles/test-package.json".to_string());
+        let result = execute_script(path, "test".to_string(), false, &executor);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    #[serial]
+    fn test_dry_run_command_execution() {
+        let executor = DryRunExecutor::new();
         let path = Some("testfiles/test-package.json".to_string());
         let result = execute_script(path, "test".to_string(), false, &executor);
         assert!(result.is_ok());

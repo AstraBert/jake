@@ -1,7 +1,7 @@
 {
   "name": "@cle-does-things/jake",
-  "version": "0.6.0",
-  "description": "A Rust-native implementation of the RAG stack",
+  "version": "0.7.0",
+  "description": "A Make-like task executor for Unix operating systems",
   "main": "start.js",
   "directories": {
     "test": "tests"

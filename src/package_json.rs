@@ -6,7 +6,6 @@ use serde_json::Value;
 use crate::models::Executor;
 
 const PACKAGE_JSON: &str = "package.json";
-const JS_PKG_MANAGERS: &[&str] = &["npm", "pnpm", "yarn", "bun", "deno"];
 
 fn resolve_package_json_path() -> Result<String> {
     let current_dir = env::current_dir()?;
@@ -95,11 +94,26 @@ fn extract_executables(cmd: &str) -> Vec<String> {
         .collect()
 }
 
+fn executable_exists(exec: &str) -> bool {
+    let mut cmd = std::process::Command::new("which")
+        .arg("-s")
+        .arg(exec)
+        .stdin(std::process::Stdio::inherit())
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .spawn()
+        .expect("Should be able to spawn a 'which' command");
+    let status = cmd
+        .wait()
+        .expect("Should be able to complete 'which' command");
+    status.success()
+}
+
 fn resolve_command_executables(command: &str) -> String {
     let execs = extract_executables(command);
     let mut full_command = command.to_string();
     for e in execs {
-        if !JS_PKG_MANAGERS.contains(&e.as_str()) {
+        if !e.starts_with("/") && !e.starts_with(".") && !executable_exists(&e) {
             full_command = full_command.replacen(&e, &format!("./node_modules/.bin/{}", e), 1);
         }
     }
@@ -316,5 +330,36 @@ mod tests {
         let path = Some("testfiles/test-package.json".to_string());
         let result = execute_script(path, "test".to_string(), false, &executor);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_extract_executables() {
+        let cmd = "cat file.txt && cat file.rs | grep 'something'";
+        let execs = extract_executables(cmd);
+        assert_eq!(vec!["cat", "cat", "grep"], execs);
+    }
+
+    #[test]
+    fn test_resolve_command_executables() {
+        let cmd = "echo 'linting' && eslint .";
+        let resolved = resolve_command_executables(cmd);
+        assert_eq!(resolved, "echo 'linting' && ./node_modules/.bin/eslint .");
+    }
+
+    #[test]
+    fn test_resolve_command_executables_with_local_exec() {
+        let cmd = "eslint . && ./post-lint";
+        let resolved = resolve_command_executables(cmd);
+        assert_eq!(resolved, "./node_modules/.bin/eslint . && ./post-lint");
+    }
+
+    #[test]
+    fn test_resolve_command_executables_with_global_exec() {
+        let cmd = "eslint . && /usr/local/bin/post-lint";
+        let resolved = resolve_command_executables(cmd);
+        assert_eq!(
+            resolved,
+            "./node_modules/.bin/eslint . && /usr/local/bin/post-lint"
+        );
     }
 }

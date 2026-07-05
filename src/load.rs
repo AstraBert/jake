@@ -79,13 +79,13 @@ fn task_to_task_node(available_tasks: &Map<String, Value>, task: &str) -> Result
             ));
         }
         let mut dependencies: Vec<String> = vec![];
-        if task_table.contains_key("depends_on") {
-            if let Some(depends) = task_table["depends_on"].as_array() {
-                for value in depends {
-                    match value.as_str() {
-                        Some(c) => dependencies.push(c.to_string()),
-                        None => continue,
-                    }
+        if task_table.contains_key("depends_on")
+            && let Some(depends) = task_table["depends_on"].as_array()
+        {
+            for value in depends {
+                match value.as_str() {
+                    Some(c) => dependencies.push(c.to_string()),
+                    None => continue,
                 }
             }
         }
@@ -615,6 +615,7 @@ mod tests {
             "strcmd".to_string(),
             "wrongcommand".to_string(),
             "env_var".to_string(),
+            "fails".to_string(),
         ];
         assert_eq!(tasks.len(), expected_tasks.len());
         for task in &expected_tasks {
@@ -638,5 +639,17 @@ mod tests {
         let executor = DryRunExecutor::new();
         let result = execute_default_command(path, "", &executor, false);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    #[serial]
+    fn test_fails_on_non_zero_exit_code() {
+        let path = Some("testfiles/jakefile.toml");
+        let executor = CommandExecutor::new();
+        let result = execute_command(path, "fails", "", &executor, false);
+        assert!(result.is_err_and(|e| {
+            e.to_string()
+                .starts_with("Command exited with a non-zero exit code:")
+        }));
     }
 }

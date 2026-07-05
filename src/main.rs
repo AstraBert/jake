@@ -15,7 +15,7 @@ mod package_json;
 
 /// Make-like task executor for Unix-based operating systems
 #[derive(Parser, Debug)]
-#[command(version = "0.7.0")]
+#[command(version = "0.8.0")]
 #[command(name = "jake")]
 #[command(about, long_about = None)]
 struct Args {

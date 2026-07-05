@@ -6,6 +6,7 @@ use serde_json::Value;
 use crate::models::Executor;
 
 const PACKAGE_JSON: &str = "package.json";
+const JS_PKG_MANAGERS: &[&str] = &["npm", "pnpm", "yarn", "bun", "deno"];
 
 fn resolve_package_json_path() -> Result<String> {
     let current_dir = env::current_dir()?;
@@ -57,6 +58,54 @@ fn get_script_command(scripts: HashMap<String, String>, script_name: String) -> 
     Err(anyhow!("Could not find script {}", script_name))
 }
 
+fn split_on_operators(cmd: &str) -> Vec<String> {
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    let mut chars = cmd.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        match c {
+            '&' if chars.peek() == Some(&'&') => {
+                chars.next();
+                parts.push(current.trim().to_string());
+                current.clear();
+            }
+            '|' if chars.peek() == Some(&'|') => {
+                chars.next();
+                parts.push(current.trim().to_string());
+                current.clear();
+            }
+            '|' | ';' => {
+                parts.push(current.trim().to_string());
+                current.clear();
+            }
+            _ => current.push(c),
+        }
+    }
+    if !current.trim().is_empty() {
+        parts.push(current.trim().to_string());
+    }
+    parts
+}
+
+fn extract_executables(cmd: &str) -> Vec<String> {
+    split_on_operators(cmd)
+        .iter()
+        .filter_map(|part| part.split_whitespace().next().map(String::from))
+        .collect()
+}
+
+fn resolve_command_executables(command: &str) -> String {
+    let execs = extract_executables(command);
+    let mut full_command = command.to_string();
+    for e in execs {
+        if !JS_PKG_MANAGERS.contains(&e.as_str()) {
+            full_command = full_command.replacen(&e, &format!("./node_modules/.bin/{}", e), 1);
+        }
+    }
+    full_command
+}
+
 pub fn execute_script(
     package_json_path: Option<String>,
     script_name: String,
@@ -78,7 +127,9 @@ pub fn execute_script(
     let map = load_package_json(path)?;
     let scripts = load_scripts(map)?;
     let command = get_script_command(scripts, script_name)?;
-    executor.execute(&command, vec![], load_env)?;
+    let resolved_command = resolve_command_executables(&command);
+    println!("\x1b[38;5;247m{}\x1b[0m\n", command);
+    executor.execute(&resolved_command, vec![], load_env)?;
     Ok(())
 }
 

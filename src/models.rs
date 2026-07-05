@@ -26,7 +26,7 @@ impl DryRunExecutor {
 impl Executor for DryRunExecutor {
     fn execute(&self, main_command: &str, args: Vec<&str>, _load_env: bool) -> anyhow::Result<()> {
         let full_command = std::iter::once(main_command)
-            .chain(args.into_iter())
+            .chain(args)
             .collect::<Vec<&str>>()
             .join(" ");
         println!("{}", full_command);
@@ -58,7 +58,14 @@ impl Executor for CommandExecutor {
                 .stderr(std::process::Stdio::inherit())
                 .spawn()?
         };
-        cmd.wait()?;
+        let status = cmd.wait()?;
+        if !status.success() {
+            return Err(anyhow::anyhow!(
+                "Command exited with a non-zero exit code: {:?}",
+                status.code().unwrap_or(1)
+            ));
+        }
+
         Ok(())
     }
 }

@@ -5,3 +5,4 @@ list = { command = "ls" }
 strcmd = "echo ciao"
 wrongcommand = { command = ["echo hola"] }
 env_var = "echo $HELLO"
+fails = "false"

@@ -57,6 +57,69 @@ fn get_script_command(scripts: HashMap<String, String>, script_name: String) -> 
     Err(anyhow!("Could not find script {}", script_name))
 }
 
+fn split_on_operators(cmd: &str) -> Vec<String> {
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    let mut chars = cmd.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        match c {
+            '&' if chars.peek() == Some(&'&') => {
+                chars.next();
+                parts.push(current.trim().to_string());
+                current.clear();
+            }
+            '|' if chars.peek() == Some(&'|') => {
+                chars.next();
+                parts.push(current.trim().to_string());
+                current.clear();
+            }
+            '|' | ';' => {
+                parts.push(current.trim().to_string());
+                current.clear();
+            }
+            _ => current.push(c),
+        }
+    }
+    if !current.trim().is_empty() {
+        parts.push(current.trim().to_string());
+    }
+    parts
+}
+
+fn extract_executables(cmd: &str) -> Vec<String> {
+    split_on_operators(cmd)
+        .iter()
+        .filter_map(|part| part.split_whitespace().next().map(String::from))
+        .collect()
+}
+
+fn executable_exists(exec: &str) -> bool {
+    let mut cmd = std::process::Command::new("which")
+        .arg("-s")
+        .arg(exec)
+        .stdin(std::process::Stdio::inherit())
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .spawn()
+        .expect("Should be able to spawn a 'which' command");
+    let status = cmd
+        .wait()
+        .expect("Should be able to complete 'which' command");
+    status.success()
+}
+
+fn resolve_command_executables(command: &str) -> String {
+    let execs = extract_executables(command);
+    let mut full_command = command.to_string();
+    for e in execs {
+        if !e.starts_with("/") && !e.starts_with(".") && !executable_exists(&e) {
+            full_command = full_command.replacen(&e, &format!("./node_modules/.bin/{}", e), 1);
+        }
+    }
+    full_command
+}
+
 pub fn execute_script(
     package_json_path: Option<String>,
     script_name: String,
@@ -78,7 +141,9 @@ pub fn execute_script(
     let map = load_package_json(path)?;
     let scripts = load_scripts(map)?;
     let command = get_script_command(scripts, script_name)?;
-    executor.execute(&command, vec![], load_env)?;
+    let resolved_command = resolve_command_executables(&command);
+    println!("\x1b[38;5;247m{}\x1b[0m\n", command);
+    executor.execute(&resolved_command, vec![], load_env)?;
     Ok(())
 }
 
@@ -265,5 +330,36 @@ mod tests {
         let path = Some("testfiles/test-package.json".to_string());
         let result = execute_script(path, "test".to_string(), false, &executor);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_extract_executables() {
+        let cmd = "cat file.txt && cat file.rs | grep 'something'";
+        let execs = extract_executables(cmd);
+        assert_eq!(vec!["cat", "cat", "grep"], execs);
+    }
+
+    #[test]
+    fn test_resolve_command_executables() {
+        let cmd = "echo 'linting' && eslint .";
+        let resolved = resolve_command_executables(cmd);
+        assert_eq!(resolved, "echo 'linting' && ./node_modules/.bin/eslint .");
+    }
+
+    #[test]
+    fn test_resolve_command_executables_with_local_exec() {
+        let cmd = "eslint . && ./post-lint";
+        let resolved = resolve_command_executables(cmd);
+        assert_eq!(resolved, "./node_modules/.bin/eslint . && ./post-lint");
+    }
+
+    #[test]
+    fn test_resolve_command_executables_with_global_exec() {
+        let cmd = "eslint . && /usr/local/bin/post-lint";
+        let resolved = resolve_command_executables(cmd);
+        assert_eq!(
+            resolved,
+            "./node_modules/.bin/eslint . && /usr/local/bin/post-lint"
+        );
     }
 }

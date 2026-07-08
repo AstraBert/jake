@@ -16,6 +16,7 @@ It is based on TOML tasks definition (stored in a file called `jakefile.toml`) a
 - You can list tasks, by passing the `--list` flag
 - You can load `.env` file (in the same working directory or anywhere up in the directory tree), by passing the `--env` flag
 - Execute scripts from a `package.json` file with the `--js` flag.
+- Execute inline scripts in Python, JavaScript, TypeScript, Ruby, PHP, Lua, and Perl
 - Dry-run mode: `jake --dry-run <task>` prints commands without executing them.
 
 ## Installation
@@ -167,6 +168,38 @@ Output:
 ```text
 hello
 ```
+
+### Inline Scripts
+
+You can also write inline scripts directly in your `jakefile.toml` using the `script` key instead of `command`. The first line of the script must specify the language:
+
+```toml
+[python]
+script = """py
+def sum_ints(x: int, y: int) -> int:
+    return x+y
+
+print(sum_ints(1,2))
+"""
+
+[javascript]
+script = """javascript
+function main() {
+    console.log('hello world')
+}
+
+main()
+"""
+
+[typescript]
+script = """ts
+console.log('hey there, great to run TS!')
+"""
+```
+
+Supported language identifiers: `py`/`python`, `js`/`javascript`, `ts`/`typescript`, `rb`/`ruby`, `php`, `lua`, `perl`.
+
+### package.json Scripts
 
 If you are in a JS/TS application using a `package.json` for its scripts, as in this example:
 

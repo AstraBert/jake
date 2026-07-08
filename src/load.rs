@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;
+use std::str::FromStr;
 
+use crate::code_blocks::ScriptLanguage;
 use crate::models::{Executor, NodeState, TaskNode};
 use anyhow::{Result, anyhow};
 use toml::map::Map;
@@ -59,7 +61,7 @@ pub fn list_jakefile_tasks(file_path: Option<&str>) -> Result<Vec<String>> {
     let mut commands: Vec<String> = vec![];
 
     for key in parsed.keys() {
-        commands.push(key.clone().to_owned());
+        commands.push(key.to_owned());
     }
 
     Ok(commands)
@@ -73,9 +75,9 @@ fn task_to_task_node(available_tasks: &Map<String, Value>, task: &str) -> Result
         ));
     }
     let task_node = if let Some(task_table) = available_tasks[task].as_table() {
-        if !task_table.contains_key("command") {
+        if !task_table.contains_key("command") && !task_table.contains_key("script") {
             return Err(anyhow!(
-                "`command` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again"
+                "`command` or `script` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again"
             ));
         }
         let mut dependencies: Vec<String> = vec![];
@@ -89,15 +91,45 @@ fn task_to_task_node(available_tasks: &Map<String, Value>, task: &str) -> Result
                 }
             }
         }
-        let command = match task_table["command"].as_str() {
-            Some(c) => c,
-            None => return Err(anyhow!("Unsupported value for the task's command")),
+        let mut is_script = false;
+        let key = if task_table.contains_key("command") {
+            "command"
+        } else {
+            is_script = true;
+            "script"
         };
-        TaskNode::new(command.to_string(), dependencies)
+        let command = match task_table[key].as_str() {
+            Some(c) => {
+                if is_script {
+                    let lang_script = c.split_once("\n");
+                    if let Some((lang, script)) = lang_script
+                        && !lang.trim().is_empty()
+                        && !script.trim().is_empty()
+                    {
+                        let script_language = ScriptLanguage::from_str(lang)?;
+                        script_language.command(script)?
+                    } else {
+                        return Err(anyhow!("Script could not be parsed correctly"));
+                    }
+                } else {
+                    c.to_string()
+                }
+            }
+            None => {
+                return Err(anyhow!(
+                    "Unsupported value for the task's command or script"
+                ));
+            }
+        };
+        TaskNode::new(command, dependencies)
     } else {
         let command = match available_tasks[task].as_str() {
             Some(t) => t,
-            None => return Err(anyhow!("Unsupported value for the task's command")),
+            None => {
+                return Err(anyhow!(
+                    "Unsupported value for the task's command or script"
+                ));
+            }
         };
         let dependencies: Vec<String> = vec![];
         TaskNode::new(command.to_string(), dependencies)
@@ -168,28 +200,15 @@ pub fn execute_command(
     let mut state_map: HashMap<String, NodeState> = HashMap::new();
     resolve_dependencies(&available_tasks, task, &mut execution_order, &mut state_map)?;
     for command in &execution_order[..execution_order.len() - 1] {
-        let command_slice: Vec<&str> = command.split_whitespace().collect();
-        let command_args = if command_slice.len() > 1 {
-            &command_slice[1..]
-        } else {
-            &[]
-        };
-        executor.execute(command_slice[0], command_args.to_vec(), load_env)?;
+        executor.execute(command.as_str(), load_env)?;
     }
     // the actual command to execute is the last one in the execution order
     let cmd = &execution_order[execution_order.len() - 1];
-    let cmd_parts: Vec<&str> = cmd.split_whitespace().collect();
-    let main_command = cmd_parts[0];
-    if cmd_parts.len() == 1 && cmd_options.is_empty() {
-        executor.execute(main_command, vec![], load_env)?;
-    } else if cmd_parts.len() == 1 && !cmd_options.is_empty() {
-        executor.execute(main_command, cmd_options, load_env)?;
-    } else if cmd_parts.len() > 1 && cmd_options.is_empty() {
-        let cmd_slice = &cmd_parts[1..];
-        executor.execute(main_command, cmd_slice.to_vec(), load_env)?;
+    if cmd_options.is_empty() {
+        executor.execute(cmd, load_env)?;
     } else {
-        let cmd_slice = [&cmd_parts[1..], &cmd_options[..]].concat();
-        executor.execute(main_command, cmd_slice, load_env)?;
+        let full_command = cmd.to_owned() + " " + cmd_options.join(" ").as_str();
+        executor.execute(&full_command, load_env)?;
     }
     Ok(())
 }
@@ -232,13 +251,7 @@ mod tests {
     }
 
     impl Executor for MockCommandExecutor {
-        fn execute(
-            &self,
-            main_command: &str,
-            args: Vec<&str>,
-            _load_env: bool,
-        ) -> anyhow::Result<()> {
-            let full_command = main_command.to_owned() + " " + &args.join(" ");
+        fn execute(&self, full_command: &str, _load_env: bool) -> anyhow::Result<()> {
             std::fs::write("test.mock", full_command)?;
             Ok(())
         }
@@ -349,6 +362,69 @@ mod tests {
 
     #[test]
     #[serial]
+    fn test_mock_script_execution() {
+        let mock_executor = MockCommandExecutor::new();
+        let result = execute_command(
+            Some("testfiles/scripts.toml"),
+            "python",
+            "",
+            &mock_executor,
+            false,
+        );
+        assert!(result.is_ok());
+        let mock_content =
+            std::fs::read_to_string("test.mock").expect("Should be able to read test.mock");
+        assert!(mock_content.contains("python3 -c"));
+        let result_1 = execute_command(
+            Some("testfiles/scripts.toml"),
+            "javascript",
+            "",
+            &mock_executor,
+            false,
+        );
+        assert!(result_1.is_ok());
+        let mock_content_1 =
+            std::fs::read_to_string("test.mock").expect("Should be able to read test.mock");
+        assert!(mock_content_1.contains("node -e"));
+        let result_2 = execute_command(
+            Some("testfiles/scripts.toml"),
+            "typescript",
+            "",
+            &mock_executor,
+            false,
+        );
+        assert!(result_2.is_ok());
+        let mock_content_2 =
+            std::fs::read_to_string("test.mock").expect("Should be able to read test.mock");
+        assert!(mock_content_2.contains("npx tsx -e"));
+    }
+
+    #[test]
+    #[serial]
+    fn test_script_execution_error() {
+        let executor = CommandExecutor::new();
+        let result = execute_command(
+            Some("testfiles/scripts.toml"),
+            "no-tag",
+            "",
+            &executor,
+            false,
+        );
+        assert!(result.is_err_and(|e| e.to_string() == "Script could not be parsed correctly".to_string()))
+    }
+
+    #[test]
+    #[serial]
+    fn test_script_execution_unsupported_lang() {
+        let executor = CommandExecutor::new();
+        let result = execute_command(Some("testfiles/scripts.toml"), "rust", "", &executor, false);
+        assert!(result.is_err_and(
+            |e| e.to_string() == "rs is not a supported language for jake scripts".to_string()
+        ))
+    }
+
+    #[test]
+    #[serial]
     fn test_command_execution() {
         let executor = CommandExecutor::new();
         let result = execute_command(
@@ -394,9 +470,8 @@ mod tests {
             false,
         );
         assert_eq!(
-            result.is_err_and(
-                |e| e.to_string() == "Unsupported value for the task's command".to_string()
-            ),
+            result.is_err_and(|e| e.to_string()
+                == "Unsupported value for the task's command or script".to_string()),
             true
         );
     }
@@ -413,7 +488,7 @@ mod tests {
             false,
         );
         assert_eq!(result.is_err_and(
-            |e| e.to_string() == "`command` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again".to_string()
+            |e| e.to_string() == "`command` or `script` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again".to_string()
         ), true);
     }
 
@@ -429,9 +504,8 @@ mod tests {
             false,
         );
         assert_eq!(
-            result.is_err_and(
-                |e| e.to_string() == "Unsupported value for the task's command".to_string()
-            ),
+            result.is_err_and(|e| e.to_string()
+                == "Unsupported value for the task's command or script".to_string()),
             true
         );
     }
@@ -530,9 +604,8 @@ mod tests {
             false,
         );
         assert_eq!(
-            result.is_err_and(
-                |e| e.to_string() == "Unsupported value for the task's command".to_string()
-            ),
+            result.is_err_and(|e| e.to_string()
+                == "Unsupported value for the task's command or script".to_string()),
             true
         );
     }
@@ -550,7 +623,7 @@ mod tests {
         );
         assert_eq!(
             result.is_err_and(
-                |e| e.to_string() == "`command` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again".to_string()
+                |e| e.to_string() == "`command` or `script` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again".to_string()
             ),
             true
         );

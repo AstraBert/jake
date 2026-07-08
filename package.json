@@ -1,6 +1,6 @@
 {
   "name": "@cle-does-things/jake",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "A Make-like task executor for Unix operating systems",
   "main": "start.js",
   "directories": {

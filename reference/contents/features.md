@@ -23,6 +23,8 @@ additional options from the command line.
 - **Loading .env files**: `.env` files can be loaded for task execution with the `--env` flag
 - **Executing package.json scripts**: in a JS/TS environment, scripts contained in a `package.json`
   file can be executed by passing the `--js` flag
+- **Inline scripts**: write scripts in Python, JavaScript, TypeScript, Ruby, PHP, Lua, and Perl
+  directly in `jakefile.toml` using the `script` key
 - **Dry-run**: `--dry-run` prints the commands that would be run without executing them
 
 ### Comparison
@@ -42,8 +44,9 @@ The table below compares `jake` against [`just`](https://github.com/casey/just) 
 | No special spacing rules                    | ✅   | ✅   | ❌   |
 | Read .env                                   | ✅   | ✅   | ❌   |
 | List available commands                     | ✅   | ✅   | ❌   |
-| Recipes written in arbitrary languages      | ❌   | ✅   | ❌   |
+| Recipes written in arbitrary languages      | ✅   | ✅   | ❌   |
 | Initialize a boilerplate jake/just/makefile | ✅   | ❌   | ❌   |
+| Execute inline scripts in `jakefile.toml`   | ✅   | ❌   | ❌   |
 | Execute scripts in `package.json`           | ✅   | ❌   | ❌   |
 | Dry-run (print commands only)               | ✅   | ✅   | ✅   |
 

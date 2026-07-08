@@ -63,7 +63,49 @@ Task name    Command to execute    Array of tasks to be executed before
                                           the task itself
 ```
 
-`command` is required when using the object syntax. `depends_on` is optional: if omitted, the task runs with no prerequisites.
+`command` is required when using the object syntax, unless you use `script` instead (see below). `depends_on` is optional: if omitted, the task runs with no prerequisites.
+
+### Inline Scripts
+
+Instead of `command`, you can use `script` to write code directly in `jakefile.toml`. The first line of the script must be the language identifier, followed by the code:
+
+```toml
+[python]
+script = """py
+def sum_ints(x: int, y: int) -> int:
+    return x + y
+
+print(sum_ints(1, 2))
+"""
+
+[javascript]
+script = """javascript
+function main() {
+    console.log('hello world')
+}
+
+main()
+"""
+
+[typescript]
+script = """ts
+console.log('hey there, great to run TS!')
+"""
+```
+
+Supported language identifiers:
+
+| Language     | Identifiers       |
+| ------------ | ----------------- |
+| Python       | `py`, `python`    |
+| JavaScript   | `js`, `javascript`|
+| TypeScript   | `ts`, `typescript`|
+| Ruby         | `rb`, `ruby`      |
+| PHP          | `php`             |
+| Lua          | `lua`             |
+| Perl         | `perl`            |
+
+Scripts are executed by invoking the appropriate interpreter (e.g. `python3 -c`, `node -e`, `npx tsx -e`).
 
 ### The Default Task
 

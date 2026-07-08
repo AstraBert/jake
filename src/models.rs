@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::env_vars::dotenv_to_hashmap;
 
 pub trait Executor {
-    fn execute(&self, main_command: &str, args: Vec<&str>, load_env: bool) -> anyhow::Result<()>;
+    fn execute(&self, full_command: &str, load_env: bool) -> anyhow::Result<()>;
 }
 
 pub struct CommandExecutor;
@@ -24,21 +24,14 @@ impl DryRunExecutor {
 }
 
 impl Executor for DryRunExecutor {
-    fn execute(&self, main_command: &str, args: Vec<&str>, _load_env: bool) -> anyhow::Result<()> {
-        let full_command = std::iter::once(main_command)
-            .chain(args)
-            .collect::<Vec<&str>>()
-            .join(" ");
+    fn execute(&self, full_command: &str, _load_env: bool) -> anyhow::Result<()> {
         println!("{}", full_command);
         Ok(())
     }
 }
 
 impl Executor for CommandExecutor {
-    fn execute(&self, main_command: &str, args: Vec<&str>, load_env: bool) -> anyhow::Result<()> {
-        let mut command_args = args;
-        command_args.insert(0, main_command);
-        let full_command = command_args.join(" ");
+    fn execute(&self, full_command: &str, load_env: bool) -> anyhow::Result<()> {
         let mut cmd = if !load_env {
             std::process::Command::new("sh")
                 .arg("-c")

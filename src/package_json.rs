@@ -1,4 +1,8 @@
-use std::{collections::HashMap, env, fs, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    env, fs,
+    path::Path,
+};
 
 use anyhow::{Result, anyhow};
 use serde_json::Value;
@@ -87,7 +91,7 @@ fn split_on_operators(cmd: &str) -> Vec<String> {
     parts
 }
 
-fn extract_executables(cmd: &str) -> Vec<String> {
+fn extract_executables(cmd: &str) -> HashSet<String> {
     split_on_operators(cmd)
         .iter()
         .filter_map(|part| part.split_whitespace().next().map(String::from))
@@ -114,7 +118,7 @@ fn resolve_command_executables(command: &str) -> String {
     let mut full_command = command.to_string();
     for e in execs {
         if !e.starts_with("/") && !e.starts_with(".") && !executable_exists(&e) {
-            full_command = full_command.replacen(&e, &format!("./node_modules/.bin/{}", e), 1);
+            full_command = full_command.replace(&e, &format!("./node_modules/.bin/{}", e));
         }
     }
     full_command
@@ -143,7 +147,7 @@ pub fn execute_script(
     let command = get_script_command(scripts, script_name)?;
     let resolved_command = resolve_command_executables(&command);
     println!("\x1b[38;5;247m{}\x1b[0m\n", command);
-    executor.execute(&resolved_command, vec![], load_env)?;
+    executor.execute(&resolved_command, load_env)?;
     Ok(())
 }
 
@@ -164,13 +168,7 @@ mod tests {
     }
 
     impl Executor for MockCommandExecutor {
-        fn execute(
-            &self,
-            main_command: &str,
-            args: Vec<&str>,
-            _load_env: bool,
-        ) -> anyhow::Result<()> {
-            let full_command = main_command.to_owned() + " " + &args.join(" ");
+        fn execute(&self, full_command: &str, _load_env: bool) -> anyhow::Result<()> {
             std::fs::write("package.mock", full_command)?;
             Ok(())
         }
@@ -336,7 +334,10 @@ mod tests {
     fn test_extract_executables() {
         let cmd = "cat file.txt && cat file.rs | grep 'something'";
         let execs = extract_executables(cmd);
-        assert_eq!(vec!["cat", "cat", "grep"], execs);
+        assert_eq!(
+            HashSet::from(["cat".to_string(), "cat".to_string(), "grep".to_string()]),
+            execs
+        );
     }
 
     #[test]
@@ -344,6 +345,16 @@ mod tests {
         let cmd = "echo 'linting' && eslint .";
         let resolved = resolve_command_executables(cmd);
         assert_eq!(resolved, "echo 'linting' && ./node_modules/.bin/eslint .");
+    }
+
+    #[test]
+    fn test_resolve_command_executables_dedups() {
+        let cmd = "eslint src/ && eslint __tests__/ && echo 'done'";
+        let resolved = resolve_command_executables(cmd);
+        assert_eq!(
+            resolved,
+            "./node_modules/.bin/eslint src/ && ./node_modules/.bin/eslint __tests__/ && echo 'done'"
+        );
     }
 
     #[test]

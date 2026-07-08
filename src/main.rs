@@ -7,6 +7,7 @@ use crate::{
 use anyhow::anyhow;
 use clap::Parser;
 
+mod code_blocks;
 mod env_vars;
 mod initialize;
 mod load;

@@ -1,9 +1,14 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, env, path::PathBuf};
 
 use crate::env_vars::dotenv_to_hashmap;
 
 pub trait Executor {
-    fn execute(&self, full_command: &str, load_env: bool) -> anyhow::Result<()>;
+    fn execute(
+        &self,
+        full_command: &str,
+        load_env: bool,
+        cwd: Option<String>,
+    ) -> anyhow::Result<()>;
 }
 
 pub struct CommandExecutor;
@@ -24,14 +29,28 @@ impl DryRunExecutor {
 }
 
 impl Executor for DryRunExecutor {
-    fn execute(&self, full_command: &str, _load_env: bool) -> anyhow::Result<()> {
+    fn execute(
+        &self,
+        full_command: &str,
+        _load_env: bool,
+        _cwd: Option<String>,
+    ) -> anyhow::Result<()> {
         println!("{}", full_command);
         Ok(())
     }
 }
 
 impl Executor for CommandExecutor {
-    fn execute(&self, full_command: &str, load_env: bool) -> anyhow::Result<()> {
+    fn execute(
+        &self,
+        full_command: &str,
+        load_env: bool,
+        cwd: Option<String>,
+    ) -> anyhow::Result<()> {
+        let current_dir = match cwd {
+            Some(c) => PathBuf::from(c.replace("\\", "/")).canonicalize()?,
+            None => env::current_dir()?,
+        };
         let mut cmd = if !load_env {
             std::process::Command::new("sh")
                 .arg("-c")
@@ -39,6 +58,7 @@ impl Executor for CommandExecutor {
                 .stdin(std::process::Stdio::inherit())
                 .stdout(std::process::Stdio::inherit())
                 .stderr(std::process::Stdio::inherit())
+                .current_dir(current_dir)
                 .spawn()?
         } else {
             let env_vars = dotenv_to_hashmap()?;
@@ -49,6 +69,7 @@ impl Executor for CommandExecutor {
                 .stdin(std::process::Stdio::inherit())
                 .stdout(std::process::Stdio::inherit())
                 .stderr(std::process::Stdio::inherit())
+                .current_dir(current_dir)
                 .spawn()?
         };
         let status = cmd.wait()?;

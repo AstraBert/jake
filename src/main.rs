@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::{
     initialize::write_jakefile,
     load::{execute_command, execute_default_command, is_posix_os, list_jakefile_tasks},
@@ -46,6 +48,12 @@ struct Args {
     /// Print commands that would be run without executing them
     #[arg(long, default_value_t = false)]
     dry_run: bool,
+
+    /// Directory under which jakefile.toml can be found
+    /// and that should be used as current working directory
+    /// for the command execution
+    #[arg(long, default_value = None)]
+    cwd: Option<String>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -72,7 +80,13 @@ fn main() -> anyhow::Result<()> {
     };
     if args.js {
         if let Some(script_name) = args.task {
-            execute_script(None, script_name, args.env, executor.as_ref())?;
+            let package_json_path = args.cwd.map(|p| {
+                PathBuf::from(p)
+                    .join("package.json")
+                    .to_string_lossy()
+                    .to_string()
+            });
+            execute_script(package_json_path, script_name, args.env, executor.as_ref())?;
         } else {
             return Err(anyhow!(
                 "No script name provided, please provide one or, if you wish to execute the default command from jakefile.toml, do not pass the `--js` flag."
@@ -81,8 +95,35 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
     match args.task {
-        Some(t) => execute_command(None, &t, &args.options, executor.as_ref(), args.env)?,
-        None => execute_default_command(None, &args.options, executor.as_ref(), args.env)?,
+        Some(t) => {
+            let jakefile_path = args.cwd.map(|p| {
+                PathBuf::from(p)
+                    .join("jakefile.toml")
+                    .to_string_lossy()
+                    .to_string()
+            });
+            execute_command(
+                jakefile_path.as_deref(),
+                &t,
+                &args.options,
+                executor.as_ref(),
+                args.env,
+            )?
+        }
+        None => {
+            let jakefile_path = args.cwd.map(|p| {
+                PathBuf::from(p)
+                    .join("jakefile.toml")
+                    .to_string_lossy()
+                    .to_string()
+            });
+            execute_default_command(
+                jakefile_path.as_deref(),
+                &args.options,
+                executor.as_ref(),
+                args.env,
+            )?
+        }
     }
     Ok(())
 }

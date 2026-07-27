@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use crate::code_blocks::ScriptLanguage;
@@ -34,30 +34,40 @@ fn resolve_jakefile_path() -> Result<String> {
     ))
 }
 
-pub fn parse_jakefile(file_path: Option<&str>) -> Result<Table> {
+pub fn parse_jakefile(file_path: Option<&str>) -> Result<(Table, Option<String>)> {
     let owned_path;
-    let path = match file_path {
+    let (path, cwd) = match file_path {
         None => {
             let p = resolve_jakefile_path()?;
             owned_path = p;
-            Path::new(&owned_path)
+            (Path::new(&owned_path), None)
         }
         Some(p) => {
             owned_path = p.to_string();
-            Path::new(&owned_path)
+            (
+                Path::new(&owned_path),
+                Some(PathBuf::from(&owned_path).parent().map_or(
+                    env::current_dir()?.canonicalize()?,
+                    |p| {
+                        p.to_path_buf()
+                            .canonicalize()
+                            .expect("Should be able to canonicalize path")
+                    },
+                )),
+            )
         }
     };
     if path.exists() {
         let content = std::fs::read_to_string(path)?;
         let table = content.parse::<Table>()?;
-        Ok(table)
+        Ok((table, cwd.map(|c| c.to_string_lossy().to_string())))
     } else {
         Err(anyhow!("jakefile.toml does not exist"))
     }
 }
 
 pub fn list_jakefile_tasks(file_path: Option<&str>) -> Result<Vec<String>> {
-    let parsed = parse_jakefile(file_path)?;
+    let (parsed, _) = parse_jakefile(file_path)?;
     let mut commands: Vec<String> = vec![];
 
     for key in parsed.keys() {
@@ -195,20 +205,20 @@ pub fn execute_command(
     } else {
         flags.split_whitespace().collect()
     };
-    let available_tasks = parse_jakefile(jakefile_path)?;
+    let (available_tasks, cwd) = parse_jakefile(jakefile_path)?;
     let mut execution_order: Vec<String> = vec![];
     let mut state_map: HashMap<String, NodeState> = HashMap::new();
     resolve_dependencies(&available_tasks, task, &mut execution_order, &mut state_map)?;
     for command in &execution_order[..execution_order.len() - 1] {
-        executor.execute(command.as_str(), load_env)?;
+        executor.execute(command.as_str(), load_env, cwd.clone())?;
     }
     // the actual command to execute is the last one in the execution order
     let cmd = &execution_order[execution_order.len() - 1];
     if cmd_options.is_empty() {
-        executor.execute(cmd, load_env)?;
+        executor.execute(cmd, load_env, cwd)?;
     } else {
         let full_command = cmd.to_owned() + " " + cmd_options.join(" ").as_str();
-        executor.execute(&full_command, load_env)?;
+        executor.execute(&full_command, load_env, cwd)?;
     }
     Ok(())
 }
@@ -219,7 +229,7 @@ pub fn execute_default_command(
     executor: &dyn Executor,
     load_env: bool,
 ) -> Result<()> {
-    let available_tasks = parse_jakefile(jakefile_path)?;
+    let (available_tasks, _) = parse_jakefile(jakefile_path)?;
     if available_tasks.contains_key("default") {
         execute_command(jakefile_path, "default", flags, executor, load_env)?;
     } else {
@@ -251,7 +261,12 @@ mod tests {
     }
 
     impl Executor for MockCommandExecutor {
-        fn execute(&self, full_command: &str, _load_env: bool) -> anyhow::Result<()> {
+        fn execute(
+            &self,
+            full_command: &str,
+            _load_env: bool,
+            _cwd: Option<String>,
+        ) -> anyhow::Result<()> {
             std::fs::write("test.mock", full_command)?;
             Ok(())
         }
@@ -266,7 +281,8 @@ mod tests {
                 println!("An error occurred: {}", e.to_string());
                 assert!(false); // fail here
             }
-            Ok(t) => {
+            Ok((t, c)) => {
+                assert!(c.is_some_and(|s| s.contains("testfiles")));
                 assert!(t.contains_key("say-hello"));
                 assert!(t.contains_key("say-hello-back"));
                 assert!(t.contains_key("say-bye"));
@@ -724,5 +740,26 @@ mod tests {
             e.to_string()
                 .starts_with("Command exited with a non-zero exit code:")
         }));
+    }
+
+    #[test]
+    #[serial]
+    fn test_resolves_cwd_from_path() {
+        let (_, cwd) =
+            parse_jakefile(Some("testfiles/jakefile.toml")).expect("Should be able to resolve cwd");
+        let expected_cwd = PathBuf::from("./testfiles")
+            .canonicalize()
+            .expect("Should be able to canonicalize");
+        assert!(cwd.is_some_and(|p| {
+            println!("{:?} {:?}", p, expected_cwd);
+            PathBuf::from(p) == expected_cwd
+        }));
+    }
+
+    #[test]
+    #[serial]
+    fn test_cwd_resolves_to_none() {
+        let (_, cwd) = parse_jakefile(None).expect("Should be able to resolve cwd");
+        assert!(cwd.is_none());
     }
 }

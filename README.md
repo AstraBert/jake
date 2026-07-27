@@ -17,6 +17,7 @@ It is based on TOML tasks definition (stored in a file called `jakefile.toml`) a
 - You can load `.env` file (in the same working directory or anywhere up in the directory tree), by passing the `--env` flag
 - Execute scripts from a `package.json` file with the `--js` flag.
 - Execute inline scripts in Python, JavaScript, TypeScript, Ruby, PHP, Lua, and Perl
+- Run tasks from any directory with `--cwd <path>`, making `jake` a workspace-wide task runner
 - Dry-run mode: `jake --dry-run <task>` prints commands without executing them.
 
 ## Installation
@@ -198,6 +199,16 @@ console.log('hey there, great to run TS!')
 ```
 
 Supported language identifiers: `py`/`python`, `js`/`javascript`, `ts`/`typescript`, `rb`/`ruby`, `php`, `lua`, `perl`.
+
+### Running tasks from a custom working directory
+
+You can use `--cwd` to run tasks from a specific directory without changing your shell's current directory. This is especially useful in monorepos or multi-package workspaces:
+
+```bash
+jake build --cwd ./packages/backend
+```
+
+When `--cwd` is provided, `jake` will look for `jakefile.toml` (or `package.json` if using `--js`) in that directory and use it as the working directory for command execution.
 
 ### package.json Scripts
 

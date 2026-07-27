@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     env, fs,
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{Result, anyhow};
@@ -131,15 +131,23 @@ pub fn execute_script(
     executor: &dyn Executor,
 ) -> Result<()> {
     let owned_path;
-    let path = match package_json_path {
+    let (path, cwd) = match package_json_path {
         None => {
             let p = resolve_package_json_path()?;
             owned_path = p;
-            Path::new(&owned_path)
+            (Path::new(&owned_path), None)
         }
         Some(p) => {
             owned_path = p;
-            Path::new(&owned_path)
+            let cur_dir = env::current_dir()?;
+            (
+                Path::new(&owned_path),
+                Some(
+                    PathBuf::from(&owned_path)
+                        .parent()
+                        .map_or(cur_dir, |p| p.to_path_buf()),
+                ),
+            )
         }
     };
     let map = load_package_json(path)?;
@@ -147,7 +155,11 @@ pub fn execute_script(
     let command = get_script_command(scripts, script_name)?;
     let resolved_command = resolve_command_executables(&command);
     println!("\x1b[38;5;247m{}\x1b[0m\n", command);
-    executor.execute(&resolved_command, load_env)?;
+    executor.execute(
+        &resolved_command,
+        load_env,
+        cwd.map(|c| c.to_string_lossy().to_string()),
+    )?;
     Ok(())
 }
 
@@ -168,7 +180,12 @@ mod tests {
     }
 
     impl Executor for MockCommandExecutor {
-        fn execute(&self, full_command: &str, _load_env: bool) -> anyhow::Result<()> {
+        fn execute(
+            &self,
+            full_command: &str,
+            _load_env: bool,
+            _cwd: Option<String>,
+        ) -> anyhow::Result<()> {
             std::fs::write("package.mock", full_command)?;
             Ok(())
         }

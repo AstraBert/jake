@@ -216,6 +216,16 @@ drwxr-xr-x@   6 user  staff   192 Feb 13 10:22 target
 
 The value passed to `--options` is appended to the task's command at execution time, so `jake list --options "-la"` effectively runs `ls -la`.
 
+**Run tasks from a custom working directory**
+
+Use `--cwd` to point `jake` to a specific directory where `jakefile.toml` (or `package.json`) resides. This is useful in monorepos or workspace setups where you want to run tasks from a different directory without changing your shell's working directory:
+
+```bash
+jake build --cwd ./packages/backend
+```
+
+The specified directory is used as the current working directory for command execution, and `jake` will look for `jakefile.toml` (or `package.json` when using `--js`) inside it.
+
 **Load a `.env` file and execute a task**
 
 If a task requires an environment variable, e.g.:

@@ -25,6 +25,7 @@ additional options from the command line.
   file can be executed by passing the `--js` flag
 - **Inline scripts**: write scripts in Python, JavaScript, TypeScript, Ruby, PHP, Lua, and Perl
   directly in `jakefile.toml` using the `script` key
+- **Custom working directory**: with `--cwd`, you can point `jake` to any directory to use as the working directory for command execution, enabling workspace-wide task running
 - **Dry-run**: `--dry-run` prints the commands that would be run without executing them
 
 ### Comparison
@@ -48,6 +49,7 @@ The table below compares `jake` against [`just`](https://github.com/casey/just) 
 | Initialize a boilerplate jake/just/makefile | ✅   | ❌   | ❌   |
 | Execute inline scripts in `jakefile.toml`   | ✅   | ❌   | ❌   |
 | Execute scripts in `package.json`           | ✅   | ❌   | ❌   |
+| Custom working directory (`--cwd`)          | ✅   | ❌   | ❌   |
 | Dry-run (print commands only)               | ✅   | ✅   | ✅   |
 
 ⚠️ `make` supports passing variables from the command line but not named options in the same

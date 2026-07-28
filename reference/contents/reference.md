@@ -190,6 +190,20 @@ echo 'hello back'
 echo 'bye'
 ```
 
+**Suppress command echo**
+
+By default, `jake` prints each command before executing it (to `stderr`). Use `--no-print-command` to suppress this output:
+
+```bash
+jake say-hello --no-print-command
+```
+
+```text
+hello
+```
+
+This only affects non-dry runs; `--dry-run` always prints commands.
+
 **Pass additional options to a task**
 
 You can forward extra flags to the underlying command using `--options`:

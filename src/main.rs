@@ -18,7 +18,7 @@ mod package_json;
 
 /// Make-like task executor for Unix-based operating systems
 #[derive(Parser, Debug)]
-#[command(version = "0.10.0")]
+#[command(version = "0.10.1")]
 #[command(name = "jake")]
 #[command(about, long_about = None)]
 struct Args {
@@ -54,6 +54,12 @@ struct Args {
     /// for the command execution
     #[arg(long, default_value = None)]
     cwd: Option<String>,
+
+    /// Do not print the command
+    /// that you are about to execute
+    /// (only applicable for non-dry runs)
+    #[arg(long, default_value_t = false)]
+    no_print_command: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -73,10 +79,10 @@ fn main() -> anyhow::Result<()> {
         println!("Available tasks:\n- {}\n", task_list);
         return Ok(());
     }
-    let executor: Box<dyn models::Executor> = if args.dry_run {
-        Box::new(DryRunExecutor::new())
+    let (executor, print_command): (Box<dyn models::Executor>, bool) = if args.dry_run {
+        (Box::new(DryRunExecutor::new()), false)
     } else {
-        Box::new(CommandExecutor::new())
+        (Box::new(CommandExecutor::new()), !args.no_print_command)
     };
     if args.js {
         if let Some(script_name) = args.task {
@@ -86,7 +92,13 @@ fn main() -> anyhow::Result<()> {
                     .to_string_lossy()
                     .to_string()
             });
-            execute_script(package_json_path, script_name, args.env, executor.as_ref())?;
+            execute_script(
+                package_json_path,
+                script_name,
+                args.env,
+                executor.as_ref(),
+                print_command,
+            )?;
         } else {
             return Err(anyhow!(
                 "No script name provided, please provide one or, if you wish to execute the default command from jakefile.toml, do not pass the `--js` flag."
@@ -108,6 +120,7 @@ fn main() -> anyhow::Result<()> {
                 &args.options,
                 executor.as_ref(),
                 args.env,
+                print_command,
             )?
         }
         None => {
@@ -122,6 +135,7 @@ fn main() -> anyhow::Result<()> {
                 &args.options,
                 executor.as_ref(),
                 args.env,
+                print_command,
             )?
         }
     }

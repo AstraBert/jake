@@ -129,6 +129,7 @@ pub fn execute_script(
     script_name: String,
     load_env: bool,
     executor: &dyn Executor,
+    print_command: bool,
 ) -> Result<()> {
     let owned_path;
     let (path, cwd) = match package_json_path {
@@ -154,7 +155,9 @@ pub fn execute_script(
     let scripts = load_scripts(map)?;
     let command = get_script_command(scripts, script_name)?;
     let resolved_command = resolve_command_executables(&command);
-    println!("\x1b[38;5;247m{}\x1b[0m\n", command);
+    if print_command {
+        eprintln!("\x1b[38;5;247m{}\x1b[0m\n", command);
+    }
     executor.execute(
         &resolved_command,
         load_env,
@@ -323,7 +326,7 @@ mod tests {
     fn test_mock_command_execution() {
         let executor = MockCommandExecutor::new();
         let path = Some("testfiles/test-package.json".to_string());
-        let result = execute_script(path, "test".to_string(), false, &executor);
+        let result = execute_script(path, "test".to_string(), false, &executor, false);
         assert!(result.is_ok());
         let content = fs::read_to_string("package.mock").expect("Should be able to read file");
         assert_eq!(content.trim(), "true");
@@ -334,7 +337,7 @@ mod tests {
     fn test_command_execution() {
         let executor = CommandExecutor::new();
         let path = Some("testfiles/test-package.json".to_string());
-        let result = execute_script(path, "test".to_string(), false, &executor);
+        let result = execute_script(path, "test".to_string(), false, &executor, false);
         assert!(result.is_ok());
     }
 
@@ -343,7 +346,7 @@ mod tests {
     fn test_dry_run_command_execution() {
         let executor = DryRunExecutor::new();
         let path = Some("testfiles/test-package.json".to_string());
-        let result = execute_script(path, "test".to_string(), false, &executor);
+        let result = execute_script(path, "test".to_string(), false, &executor, false);
         assert!(result.is_ok());
     }
 

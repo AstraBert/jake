@@ -244,6 +244,20 @@ echo 'hello back'
 echo 'bye'
 ```
 
+**Suppress command echo**
+
+By default, `jake` prints each command before executing it (to `stderr`). Use `--no-print-command` to suppress this output:
+
+```bash
+jake say-hello --no-print-command
+```
+
+```text
+hello
+```
+
+This only affects non-dry runs; `--dry-run` always prints commands.
+
 ## In GitHub CI/CD
 
 You can use the [setup-jake](https://github.com/AstraBert/setup-jake) action to set up jake and use it in your GitHub Actions workflows.

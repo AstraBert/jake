@@ -27,6 +27,7 @@ additional options from the command line.
   directly in `jakefile.toml` using the `script` key
 - **Custom working directory**: with `--cwd`, you can point `jake` to any directory to use as the working directory for command execution, enabling workspace-wide task running
 - **Dry-run**: `--dry-run` prints the commands that would be run without executing them
+- **Suppress command echo**: `--no-print-command` hides the command before execution output
 
 ### Comparison
 
@@ -51,6 +52,7 @@ The table below compares `jake` against [`just`](https://github.com/casey/just) 
 | Execute scripts in `package.json`           | ✅   | ❌   | ❌   |
 | Custom working directory (`--cwd`)          | ✅   | ❌   | ❌   |
 | Dry-run (print commands only)               | ✅   | ✅   | ✅   |
+| Suppress command echo (`--no-print-command`) | ✅   | ❌   | ❌   |
 
 ⚠️ `make` supports passing variables from the command line but not named options in the same
 ergonomic way.

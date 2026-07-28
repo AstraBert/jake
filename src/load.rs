@@ -196,6 +196,7 @@ pub fn execute_command(
     flags: &str,
     executor: &dyn Executor,
     load_env: bool,
+    print_command: bool,
 ) -> Result<()> {
     if task.is_empty() {
         return Ok(());
@@ -215,9 +216,15 @@ pub fn execute_command(
     // the actual command to execute is the last one in the execution order
     let cmd = &execution_order[execution_order.len() - 1];
     if cmd_options.is_empty() {
+        if print_command {
+            eprintln!("\x1b[38;5;247m{}\x1b[0m\n", cmd)
+        }
         executor.execute(cmd, load_env, cwd)?;
     } else {
         let full_command = cmd.to_owned() + " " + cmd_options.join(" ").as_str();
+        if print_command {
+            eprintln!("\x1b[38;5;247m{}\x1b[0m\n", full_command)
+        }
         executor.execute(&full_command, load_env, cwd)?;
     }
     Ok(())
@@ -228,16 +235,31 @@ pub fn execute_default_command(
     flags: &str,
     executor: &dyn Executor,
     load_env: bool,
+    print_command: bool,
 ) -> Result<()> {
     let (available_tasks, _) = parse_jakefile(jakefile_path)?;
     if available_tasks.contains_key("default") {
-        execute_command(jakefile_path, "default", flags, executor, load_env)?;
+        execute_command(
+            jakefile_path,
+            "default",
+            flags,
+            executor,
+            load_env,
+            print_command,
+        )?;
     } else {
         let first_key = available_tasks.keys().next();
         match first_key {
             None => return Err(anyhow!("could not find any task within jakefile")),
             Some(task) => {
-                execute_command(jakefile_path, task, flags, executor, load_env)?;
+                execute_command(
+                    jakefile_path,
+                    task,
+                    flags,
+                    executor,
+                    load_env,
+                    print_command,
+                )?;
             }
         }
     }
@@ -331,6 +353,7 @@ mod tests {
             "-la /hello/something",
             &mock_executor,
             false,
+            false,
         );
         assert!(result.is_ok());
         let mock_content =
@@ -342,13 +365,19 @@ mod tests {
             "",
             &mock_executor,
             false,
+            false,
         );
         assert!(result_1.is_ok());
         let mock_content_1 =
             std::fs::read_to_string("test.mock").expect("Should be able to read test.mock");
         assert_eq!(mock_content_1.trim(), "ls");
-        let result_2 =
-            execute_default_command(Some("testfiles/jakefile.toml"), "", &mock_executor, false);
+        let result_2 = execute_default_command(
+            Some("testfiles/jakefile.toml"),
+            "",
+            &mock_executor,
+            false,
+            false,
+        );
         assert!(result_2.is_ok());
         let mock_content_2 =
             std::fs::read_to_string("test.mock").expect("Should be able to read test.mock");
@@ -357,6 +386,7 @@ mod tests {
             Some("testfiles/withdefault.toml"),
             "",
             &mock_executor,
+            false,
             false,
         );
         assert!(result_3.is_ok());
@@ -368,6 +398,7 @@ mod tests {
             "strcmd",
             "",
             &mock_executor,
+            false,
             false,
         );
         assert!(result_4.is_ok());
@@ -386,6 +417,7 @@ mod tests {
             "",
             &mock_executor,
             false,
+            false,
         );
         assert!(result.is_ok());
         let mock_content =
@@ -397,6 +429,7 @@ mod tests {
             "",
             &mock_executor,
             false,
+            false,
         );
         assert!(result_1.is_ok());
         let mock_content_1 =
@@ -407,6 +440,7 @@ mod tests {
             "typescript",
             "",
             &mock_executor,
+            false,
             false,
         );
         assert!(result_2.is_ok());
@@ -425,6 +459,7 @@ mod tests {
             "",
             &executor,
             false,
+            false,
         );
         assert!(result.is_err_and(|e| e.to_string() == "Script could not be parsed correctly".to_string()))
     }
@@ -433,7 +468,14 @@ mod tests {
     #[serial]
     fn test_script_execution_unsupported_lang() {
         let executor = CommandExecutor::new();
-        let result = execute_command(Some("testfiles/scripts.toml"), "rust", "", &executor, false);
+        let result = execute_command(
+            Some("testfiles/scripts.toml"),
+            "rust",
+            "",
+            &executor,
+            false,
+            false,
+        );
         assert!(result.is_err_and(
             |e| e.to_string() == "rs is not a supported language for jake scripts".to_string()
         ))
@@ -449,6 +491,7 @@ mod tests {
             "",
             &executor,
             false,
+            false,
         );
         assert!(result.is_ok());
     }
@@ -462,6 +505,7 @@ mod tests {
             "say-ciao",
             "",
             &executor,
+            false,
             false,
         );
         assert_eq!(
@@ -484,6 +528,7 @@ mod tests {
             "",
             &executor,
             false,
+            false,
         );
         assert_eq!(
             result.is_err_and(|e| e.to_string()
@@ -502,6 +547,7 @@ mod tests {
             "",
             &executor,
             false,
+            false,
         );
         assert_eq!(result.is_err_and(
             |e| e.to_string() == "`command` or `script` key not available for the requested task: ensure that there are no typos and the TOML syntax is correct before running again".to_string()
@@ -517,6 +563,7 @@ mod tests {
             "wrongcommand",
             "",
             &executor,
+            false,
             false,
         );
         assert_eq!(
@@ -536,6 +583,7 @@ mod tests {
             "",
             &executor,
             false,
+            false,
         );
         assert!(result.is_ok());
     }
@@ -550,6 +598,7 @@ mod tests {
             "",
             &executor,
             false,
+            false,
         );
         assert!(result.is_ok());
     }
@@ -558,8 +607,13 @@ mod tests {
     #[serial]
     fn test_default_command_with_default() {
         let executor = CommandExecutor::new();
-        let result =
-            execute_default_command(Some("testfiles/withdefault.toml"), "", &executor, false);
+        let result = execute_default_command(
+            Some("testfiles/withdefault.toml"),
+            "",
+            &executor,
+            false,
+            false,
+        );
         assert!(result.is_ok());
     }
 
@@ -567,7 +621,8 @@ mod tests {
     #[serial]
     fn test_default_command_first_key() {
         let executor = CommandExecutor::new();
-        let result = execute_default_command(Some("testfiles/jakefile.toml"), "", &executor, false);
+        let result =
+            execute_default_command(Some("testfiles/jakefile.toml"), "", &executor, false, false);
         assert!(result.is_ok());
     }
 
@@ -580,6 +635,7 @@ mod tests {
             "circular",
             "",
             &executor,
+            false,
             false,
         );
         assert_eq!(
@@ -598,6 +654,7 @@ mod tests {
             "no-exist",
             "",
             &executor,
+            false,
             false,
         );
         assert_eq!(
@@ -618,6 +675,7 @@ mod tests {
             "",
             &executor,
             false,
+            false,
         );
         assert_eq!(
             result.is_err_and(|e| e.to_string()
@@ -635,6 +693,7 @@ mod tests {
             "calls-command",
             "",
             &executor,
+            false,
             false,
         );
         assert_eq!(
@@ -655,6 +714,7 @@ mod tests {
             "",
             &executor,
             true,
+            false,
         );
         assert!(result.is_ok());
     }
@@ -717,7 +777,7 @@ mod tests {
     fn test_dry_run_executor_command() {
         let path = Some("testfiles/jakefile.toml");
         let executor = DryRunExecutor::new();
-        let result = execute_command(path, "say-hello", "", &executor, false);
+        let result = execute_command(path, "say-hello", "", &executor, false, false);
         assert!(result.is_ok());
     }
 
@@ -726,7 +786,7 @@ mod tests {
     fn test_dry_run_executor_default_command() {
         let path = Some("testfiles/withdefault.toml");
         let executor = DryRunExecutor::new();
-        let result = execute_default_command(path, "", &executor, false);
+        let result = execute_default_command(path, "", &executor, false, false);
         assert!(result.is_ok());
     }
 
@@ -735,7 +795,7 @@ mod tests {
     fn test_fails_on_non_zero_exit_code() {
         let path = Some("testfiles/jakefile.toml");
         let executor = CommandExecutor::new();
-        let result = execute_command(path, "fails", "", &executor, false);
+        let result = execute_command(path, "fails", "", &executor, false, false);
         assert!(result.is_err_and(|e| {
             e.to_string()
                 .starts_with("Command exited with a non-zero exit code:")
